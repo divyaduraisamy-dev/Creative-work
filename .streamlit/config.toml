@@ -5,3 +5,10 @@ backgroundColor = "#000000"
 secondaryBackgroundColor = "#111111"
 textColor = "#F2EAD3"
 primaryColor = "#F2EAD3"
+
+# Fonts (Google Fonts, loaded by Streamlit). Body: Rubik. Headings: Londrina Solid.
+# The site's own features (header, captions, credit line) use the body font too (site_effects.py).
+font = "Rubik:https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap, sans-serif"
+headingFont = "'Londrina Solid':https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@100;300;400;900&display=swap, sans-serif"
+# Londrina Solid has weights 100, 300, 400 and 900; 400 for every heading level (h1-h6).
+headingFontWeights = [400, 400, 400, 400, 400, 400]

@@ -4,6 +4,8 @@ Each function drops one feature into the page with one call:
 
     import site_effects as fx
     fx.logo_loader()   # full-screen logo draw-in (first page load of a session only)
+    fx.site_header()   # hairline header: logo, About, Work, Contact (email reveal), LinkedIn, colour toggle
+    fx.corner_logo()   # (alternative to the header) your logo pinned top-left
     fx.pet_head()      # grabbable, tilting dog drawing
     fx.wave_field()    # cream wave lines that bend under the cursor, with the required credit
 
@@ -108,6 +110,82 @@ def logo_loader(once_per_session: bool = True, speed: float = 1.0) -> None:
     )
     start = restore_svg + f'CustomLogoLoader.init("c-logo-loader", {options});'
     st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+def corner_logo(color: str = "#f2ead3", hover_color: str = "#000000") -> None:
+    """Your logo pinned to the top-left corner.
+
+    `color` is the logo on the page; on hover a badge in that colour fills in and the logo turns
+    `hover_color`. Clicking scrolls back to the top. Call it right after logo_loader(): when the
+    loader plays, its logo glides into this spot.
+    """
+    markup, svg = _split_svg(_component("custom-features/corner-logo.html"))
+    markup = markup.replace("--color-logo: #f2ead3;", f"--color-logo: {color};", 1)
+    markup = markup.replace("--color-badge: #f2ead3;", f"--color-badge: {color};", 1)
+    markup = markup.replace("--color-logo-hover: #000000;", f"--color-logo-hover: {hover_color};", 1)
+    restore_svg = (
+        'var slot = document.querySelector("#c-corner-logo [data-svg-slot]");\n'
+        f"if (slot) slot.outerHTML = {json.dumps(svg)};\n"
+    )
+    start = restore_svg + 'CustomCornerLogo.init("c-corner-logo", { waitForLoader: "c-logo-loader" });'
+    st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+def encode_email(address: str) -> str:
+    """Scramble an email for site_header(email_code=...): base64 of the reversed address.
+
+    Keeps the plain address out of the code and the page; it is only assembled when a visitor
+    clicks Contact. Make a code with:
+        uv run python -c "import site_effects as fx; print(fx.encode_email('you@example.com'))"
+    """
+    return base64.b64encode(address[::-1].encode("utf-8")).decode("ascii")
+
+
+# Page-wide styles the header needs inside Streamlit: hide Streamlit's own top bar, let the header
+# run edge to edge at the very top, and the light colour scheme for the page and the features.
+_PAGE_CSS = """
+<style>
+  [data-testid="stHeader"] { display: none; }
+  [data-testid="stMainBlockContainer"] { padding-top: 0 !important; }
+  [data-testid="stMain"] { overflow-x: hidden; }
+  .stElementContainer:has(> .stHtml > #c-logo-loader),
+  .stElementContainer:has(#site-effects-page-css) { margin-bottom: -1rem; }
+  .c-site-header { width: 100vw; margin-left: calc(50% - 50vw); }
+
+  /* The features use the page's body font (set in .streamlit/config.toml). */
+  :root .c-site-header { --font-ui: "Rubik", sans-serif; }
+  .c-pet__caption, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
+
+  .stApp { transition: none; }
+  :root[data-site-theme="light"] .stApp { background-color: #f2ead3; color: #000000; }
+  :root[data-site-theme="light"] .stApp h1,
+  :root[data-site-theme="light"] .stApp h2,
+  :root[data-site-theme="light"] .stApp h3,
+  :root[data-site-theme="light"] .stApp [data-testid="stMarkdownContainer"],
+  :root[data-site-theme="light"] .stApp [data-testid="stHeadingWithActionElements"] { color: #000000; }
+  :root[data-site-theme="light"] .c-pet { --color-bg: #f2ead3; --color-text: #000000; }
+  :root[data-site-theme="light"] .c-pet__img { filter: brightness(0); }
+  :root[data-site-theme="light"] .c-waves { --color-bg: #f2ead3; --color-text: #000000; --color-line: #000000; }
+</style>
+"""
+
+
+def site_header(linkedin: str = "https://www.linkedin.com/", email_code: str = "") -> None:
+    """Header row inspired by wodniack.dev: logo | About · Work · Contact | LinkedIn | colour toggle.
+
+    The hairlines bend away from the cursor. About / Work scroll to st.header(..., anchor="about")
+    and anchor="work". Contact inverts the page and shows the email from `email_code` (see
+    encode_email). The toggle inverts the page and remembers it. Call it right after logo_loader().
+    """
+    markup, svg = _split_svg(_component("custom-features/site-header.html"))
+    restore_svg = (
+        'var slot = document.querySelector("#c-site-header [data-svg-slot]");\n'
+        f"if (slot) slot.outerHTML = {json.dumps(svg)};\n"
+    )
+    options = json.dumps({"linkedin": linkedin, "email": email_code})
+    start = restore_svg + f'CustomSiteHeader.init("c-site-header", {options});'
+    page_css = _PAGE_CSS.replace("<style>", '<style id="site-effects-page-css">', 1)
+    st.html(page_css + markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
 
 
 def pet_head(image: str | Path | None = None, caption: str = "Placeholder caption: grab me", titles: dict | None = None) -> None:

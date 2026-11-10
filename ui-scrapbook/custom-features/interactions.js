@@ -6,11 +6,16 @@
  *   Nothing runs on load. Start what you need:
  *     CustomLogoLoader.init("c-logo-loader");   // full-screen logo draw-in, once per session
  *     CustomPetHead.init("c-pet-head");          // grabbable, tilting dog drawing
+ *     CustomCornerLogo.init("c-corner-logo");    // pinned top-left logo
+ *     CustomSiteHeader.init("c-site-header");    // header (also starts CustomSiteTheme)
  *   init() accepts an element id or an element and is safe to call twice.
  *
  * Feature modules (default element id):
  *   CustomLogoLoader  #c-logo-loader   outline draw-in, fill, frame lines, lift-off reveal
  *   CustomPetHead     #c-pet-head      hover tilt + swell, grab squash/stretch, spring wobble
+ *   CustomCornerLogo  #c-corner-logo   pinned logo: hover colour swap, spring tilt, back to top
+ *   CustomSiteHeader  #c-site-header   hairline header: lines bend from the cursor, menu, LinkedIn,
+ *                                      Contact email reveal, page colour toggle (CustomSiteTheme)
  */
 
 /* Shared helpers ----------------------------------------------------------------------------- */
@@ -33,6 +38,14 @@ const CustomEnv = {
     set(key, value) { try { window.sessionStorage.setItem(key, value); } catch (e) { /* blocked */ } },
   },
 
+  // Scroll the window and any scrolled inner panel (e.g. Streamlit's main section) to the top.
+  scrollToTop() {
+    const behavior = CustomEnv.reducedMotion ? "auto" : "smooth";
+    const scrolled = [document.scrollingElement || document.documentElement];
+    document.querySelectorAll("body *").forEach((node) => { if (node.scrollTop > 0) scrolled.push(node); });
+    scrolled.forEach((node) => node.scrollTo({ top: 0, behavior }));
+  },
+
   ease: {
     inOut: "cubic-bezier(0.65, 0, 0.35, 1)",
     out: "cubic-bezier(0.16, 1, 0.3, 1)",
@@ -45,9 +58,13 @@ const CustomEnv = {
  *   0.0s  each logo piece's outline draws (1.2s each, pieces staggered over ~0.9s)
  *   1.5s  the solid logo fades in while the outlines fade out (0.6s)
  *   1.2s  frame lines grow from their centres (1s)
- *   2.6s  the logo shrinks slightly, the cover lifts upward (0.8s), then the element is hidden
+ *   2.6s  the cover lifts upward (0.8s), then the element is hidden. If the corner logo
+ *         (options.dockTo) is on the page, the logo glides into its spot and takes its colour;
+ *         otherwise it shrinks slightly and fades.
  * Click / tap / Escape skips. Plays once per browser session (sessionStorage) unless
- * options.oncePerSession is false. Fires document "logoloader:done" at the end.
+ * options.oncePerSession is false. Always fires document "logoloader:done" when it is out of the
+ * way, also when skipped or already seen (detail: { played, docked }). While it plays,
+ * <html data-logo-loader="playing">; afterwards "done".
  */
 const CustomLogoLoader = {
   el: null,
@@ -56,7 +73,9 @@ const CustomLogoLoader = {
     storageKey: "custom-logo-loader-seen",
     speed: 1,          // 2 = twice as fast
     strokeWidth: 1.5,  // outline thickness in screen pixels
+    dockTo: "c-site-header",  // element id whose [data-logo] the logo glides into (false: no glide)
   },
+  docked: false,
   timers: [],
   isDone: false,
 
@@ -71,6 +90,7 @@ const CustomLogoLoader = {
       return;
     }
     CustomEnv.session.set(this.options.storageKey, "true");
+    document.documentElement.dataset.logoLoader = "playing";
     this.lockScroll(true);
     this.bindEvents();
     if (CustomEnv.reducedMotion) this.playReduced();
@@ -152,12 +172,33 @@ const CustomLogoLoader = {
     });
 
     this.later(2.6, () => {
-      if (svg) svg.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(0.9)", opacity: 0 }],
+      const docked = svg && this.glideToDock(svg);
+      if (svg && !docked) svg.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(0.9)", opacity: 0 }],
         { duration: this.t(0.6), easing: easeIn, fill: "forwards" });
       this.el.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 100% 0)" }],
-        { duration: this.t(0.8), delay: this.t(0.25), easing: inOut, fill: "forwards" })
+        { duration: this.t(0.8), delay: this.t(docked ? 0.35 : 0.25), easing: inOut, fill: "forwards" })
         .finished.then(() => this.finish());
     });
+  },
+
+  // Move the logo onto the corner logo (same size, place and colour). Returns true if it glided.
+  glideToDock(svg) {
+    const dockEl = this.options.dockTo && document.getElementById(this.options.dockTo);
+    const dock = dockEl && (dockEl.querySelector("[data-logo]") || dockEl);
+    if (!dock) return false;
+    const from = svg.getBoundingClientRect();
+    const to = dock.getBoundingClientRect();
+    if (!from.width || !to.width) return false;
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const scale = to.width / from.width;
+    svg.style.transformOrigin = "50% 50%";
+    svg.animate([
+      { transform: "translate(0, 0) scale(1)", color: getComputedStyle(svg).color },
+      { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, color: getComputedStyle(dock).color },
+    ], { duration: this.t(0.9), easing: CustomEnv.ease.inOut, fill: "forwards" });
+    this.docked = true;
+    return true;
   },
 
   playReduced() {
@@ -183,7 +224,8 @@ const CustomLogoLoader = {
     this.lockScroll(false);
     if (this.onSkip) this.el.removeEventListener("click", this.onSkip);
     if (this.onKey) document.removeEventListener("keydown", this.onKey);
-    if (!silent) document.dispatchEvent(new CustomEvent("logoloader:done"));
+    document.documentElement.dataset.logoLoader = "done";
+    document.dispatchEvent(new CustomEvent("logoloader:done", { detail: { played: !silent, docked: this.docked } }));
   },
 };
 
@@ -351,5 +393,549 @@ const CustomPetHead = {
   },
 };
 
+/* Corner logo -------------------------------------------------------------------------------------
+ * The hover colour swap is CSS (works without this file). This module adds:
+ *   - a spring tilt toward the cursor (up to options.maxTilt degrees) and a small swell on hover
+ *   - tap feedback on touch screens (data-active for options.tapMs)
+ *   - click scrolls back to the top, including pages that scroll an inner panel (Streamlit)
+ *   - waiting for the logo loader: hidden while it plays, shown when it ends ("logoloader:done");
+ *     CustomLogoLoader glides its logo into this element's spot first.
+ */
+const CustomCornerLogo = {
+  el: null,
+  options: {
+    maxTilt: 18,        // degrees
+    hoverScale: 1.06,
+    spring: { stiffness: 0.16, damping: 0.72 },
+    tapMs: 600,
+    waitForLoader: "c-logo-loader",  // id, or false to show immediately
+    maxWaitMs: 8000,    // show anyway if the loader never reports back
+  },
+  value: { rx: 0, ry: 0, s: 1 },
+  vel: { rx: 0, ry: 0, s: 0 },
+  target: { rx: 0, ry: 0, s: 1 },
+  frame: null,
+
+  init(target = "c-corner-logo", options = {}) {
+    const el = CustomEnv.resolve(target);
+    if (!CustomEnv.claim(el)) return;
+    this.el = el;
+    this.options = { ...this.options, ...options };
+    this.mark = el.querySelector(".c-corner-logo__mark") || el;
+    this.bindEvents();
+    this.waitForLoader();
+  },
+
+  bindEvents() {
+    const el = this.el;
+    el.addEventListener("pointermove", (e) => this.onMove(e));
+    el.addEventListener("pointerleave", () => this.rest());
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") this.flash(); });
+    el.addEventListener("click", (e) => { e.preventDefault(); CustomEnv.scrollToTop(); });
+  },
+
+  // Hidden while the loader plays; the loader's "logoloader:done" (or a timeout) reveals it.
+  waitForLoader() {
+    const id = this.options.waitForLoader;
+    const loader = id && document.getElementById(id);
+    const playing = loader && !loader.hidden && document.documentElement.dataset.logoLoader !== "done";
+    if (!playing) return;
+    this.el.dataset.waiting = "";
+    const show = () => {
+      clearTimeout(timer);
+      document.removeEventListener("logoloader:done", show);
+      delete this.el.dataset.waiting;
+    };
+    const timer = setTimeout(show, this.options.maxWaitMs);
+    document.addEventListener("logoloader:done", show);
+  },
+
+  onMove(e) {
+    if (CustomEnv.reducedMotion || e.pointerType !== "mouse") return;
+    const r = this.el.getBoundingClientRect();
+    const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width / 2)));
+    const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height / 2)));
+    this.target.ry = dx * this.options.maxTilt;
+    this.target.rx = -dy * this.options.maxTilt;
+    this.target.s = this.options.hoverScale;
+    this.wake();
+  },
+
+  rest() {
+    this.target.rx = 0;
+    this.target.ry = 0;
+    this.target.s = 1;
+    this.wake();
+  },
+
+  flash() {
+    this.el.dataset.active = "";
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => { delete this.el.dataset.active; }, this.options.tapMs);
+  },
+
+  wake() {
+    if (!this.frame) this.frame = requestAnimationFrame(() => this.step());
+  },
+
+  step() {
+    this.frame = null;
+    const { value: v, vel, target: t } = this;
+    const { stiffness, damping } = this.options.spring;
+    let moving = false;
+    for (const key of ["rx", "ry", "s"]) {
+      vel[key] += (t[key] - v[key]) * stiffness;
+      vel[key] *= damping;
+      v[key] += vel[key];
+      if (Math.abs(vel[key]) > 0.0005 || Math.abs(t[key] - v[key]) > 0.0005) moving = true;
+    }
+    this.mark.style.transform =
+      `rotateX(${v.rx.toFixed(2)}deg) rotateY(${v.ry.toFixed(2)}deg) scale(${v.s.toFixed(4)})`;
+    if (moving) this.wake();
+  },
+};
+
+/* Site theme --------------------------------------------------------------------------------------
+ * Page-wide colour switch: <html data-site-theme="dark|light">. Components read it in their CSS.
+ * set(theme, { animate, save }) runs a wipe (a cover in the new background colour slides down,
+ * the theme switches, the cover slides off) and remembers the choice in localStorage unless
+ * save is false. Fires document "sitetheme:change" (detail: { theme }).
+ * Wipe concept from wodniack.dev's contrast toggle; written from scratch.
+ */
+const CustomSiteTheme = {
+  options: {
+    storageKey: "site-theme",
+    themes: ["dark", "light"],
+    colors: { dark: "#000000", light: "#f2ead3" },  // wipe colour per theme
+    wipeSeconds: 0.38,
+  },
+  ready: false,
+  busy: null,
+
+  init(options = {}) {
+    if (this.ready) return this;
+    this.ready = true;
+    this.options = { ...this.options, ...options };
+    let saved = null;
+    try { saved = window.localStorage.getItem(this.options.storageKey); } catch (e) { /* blocked */ }
+    this.apply(this.options.themes.includes(saved) ? saved : this.options.themes[0]);
+    return this;
+  },
+
+  get() {
+    return document.documentElement.dataset.siteTheme || this.options.themes[0];
+  },
+
+  saved() {
+    try { return window.localStorage.getItem(this.options.storageKey) || this.options.themes[0]; }
+    catch (e) { return this.options.themes[0]; }
+  },
+
+  other(theme = this.get()) {
+    const t = this.options.themes;
+    return t[(t.indexOf(theme) + 1) % t.length];
+  },
+
+  apply(theme) {
+    document.documentElement.dataset.siteTheme = theme;
+    document.dispatchEvent(new CustomEvent("sitetheme:change", { detail: { theme } }));
+  },
+
+  // Resolves once the new colours are on screen (before the cover finishes sliding off).
+  set(theme, { animate = true, save = true } = {}) {
+    if (save) { try { window.localStorage.setItem(this.options.storageKey, theme); } catch (e) { /* blocked */ } }
+    if (theme === this.get()) return Promise.resolve();
+    if (!animate || CustomEnv.reducedMotion) { this.apply(theme); return Promise.resolve(); }
+    if (this.busy) this.busy.cancel();
+    const cover = document.createElement("div");
+    cover.setAttribute("aria-hidden", "true");
+    Object.assign(cover.style, {
+      position: "fixed", inset: "0", zIndex: "2147482000", pointerEvents: "none",
+      background: this.options.colors[theme] || "#000",
+    });
+    document.body.appendChild(cover);
+    const ms = this.options.wipeSeconds * 1000;
+    const ease = CustomEnv.ease.inOut;
+    const grow = cover.animate([{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }],
+      { duration: ms, easing: ease, fill: "forwards" });
+    let cancelled = false;
+    this.busy = { cancel: () => { cancelled = true; cover.remove(); } };
+    return grow.finished.then(() => {
+      if (cancelled) return;
+      this.apply(theme);
+      cover.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(100% 0 0 0)" }],
+        { duration: ms, easing: ease, fill: "forwards" })
+        .finished.then(() => { cover.remove(); this.busy = null; });
+    }).catch(() => cover.remove());
+  },
+
+  toggle(opts) {
+    return this.set(this.other(), opts);
+  },
+};
+
+/* Site header -------------------------------------------------------------------------------------
+ * Hairlines: the cell dividers and the bottom line are drawn as SVG paths over the header (the CSS
+ * borders turn transparent). Each point springs toward an offset that pushes it away from the
+ * cursor: offset = (1 - distance / radius)^2 * push, along the line's normal.
+ * Hover fills: the logo, LinkedIn and toggle cells invert on hover. The fill is an SVG shape
+ * (behind the cell contents) whose edges are the same moving dividers and bottom line, so it
+ * stays solid while they bend. Without JS the cells use a plain CSS background instead.
+ * Logo cell: spring tilt and back-to-top. About / Work scroll to
+ * id="about" / id="work". The toggle and Contact use CustomSiteTheme; Contact also slides open
+ * the email strip (email decoded from data-email: base64 of the reversed address).
+ */
+const CustomSiteHeader = {
+  instances: new Map(),
+  options: {
+    radius: 120,          // px around the cursor that the lines react to
+    push: 22,             // px a line moves at the cursor
+    segment: 18,          // px between points along a line
+    spring: { stiffness: 0.12, damping: 0.78 },
+    logoTilt: 16,         // degrees
+    logoScale: 1.06,
+    tapMs: 600,
+    waitForLoader: "c-logo-loader",  // hide the logo while the loader plays (it glides in)
+    maxWaitMs: 8000,
+    linkedin: null,       // URL; otherwise the href in the markup is kept
+    email: null,          // encoded email (see Notes); otherwise data-email in the markup
+    theme: {},            // options for CustomSiteTheme
+  },
+
+  init(target = "c-site-header", options = {}) {
+    const root = CustomEnv.resolve(target);
+    if (!CustomEnv.claim(root)) return this.instances.get(root) || null;
+    const opts = { ...this.options, ...options };
+    CustomSiteTheme.init(opts.theme);
+    const h = {
+      root, opts,
+      row: root.querySelector(".c-site-header__row"),
+      cells: Array.from(root.querySelectorAll(".c-site-header__row > .c-site-header__cell")),
+      logo: root.querySelector(".c-site-header__logo"),
+      mark: root.querySelector(".c-site-header__mark"),
+      contact: root.querySelector(".c-site-header__contact"),
+      contactBtn: root.querySelector("[data-contact-toggle]"),
+      themeBtn: root.querySelector("[data-theme-toggle]"),
+      lines: [], svg: null, fillSvg: null, fills: [], mouse: null, frame: null,
+      tilt: { v: { rx: 0, ry: 0, s: 1 }, vel: { rx: 0, ry: 0, s: 0 }, t: { rx: 0, ry: 0, s: 1 } },
+    };
+    if (opts.linkedin) root.querySelectorAll("[data-linkedin]").forEach((a) => { a.href = opts.linkedin; });
+    if (opts.email && h.contact) h.contact.dataset.email = opts.email;
+    this.instances.set(root, h);
+    this.buildSvg(h);
+    this.bindEvents(h);
+    this.syncThemeButton(h);
+    this.waitForLoader(h);
+    return h;
+  },
+
+  bindEvents(h) {
+    const { root } = h;
+    root.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "touch") return;
+      const r = root.getBoundingClientRect();
+      h.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+      this.wake(h);
+    });
+    root.addEventListener("pointerleave", () => { h.mouse = null; this.wake(h); });
+
+    if (h.logo) {
+      h.logo.addEventListener("pointermove", (e) => this.tiltLogo(h, e));
+      h.logo.addEventListener("pointerleave", () => this.tiltLogo(h, null));
+      h.logo.addEventListener("click", (e) => { e.preventDefault(); CustomEnv.scrollToTop(); });
+    }
+    root.querySelectorAll("[data-scroll-to]").forEach((a) => a.addEventListener("click", (e) => {
+      const dest = document.getElementById(a.dataset.scrollTo);
+      if (!dest) return;
+      e.preventDefault();
+      dest.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
+    }));
+    if (h.themeBtn) h.themeBtn.addEventListener("click", () => {
+      if (this.isContactOpen(h)) this.closeContact(h);
+      else CustomSiteTheme.toggle();
+    });
+    if (h.contactBtn) h.contactBtn.addEventListener("click", () => {
+      if (this.isContactOpen(h)) this.closeContact(h);
+      else this.openContact(h);
+    });
+    const copy = root.querySelector("[data-email-copy]");
+    if (copy) copy.addEventListener("click", () => this.copyEmail(h, copy));
+    document.addEventListener("sitetheme:change", () => this.syncThemeButton(h));
+    if (window.ResizeObserver) new ResizeObserver(() => this.layout(h)).observe(root);
+    else window.addEventListener("resize", () => this.layout(h));
+  },
+
+  /* Hairlines */
+  buildSvg(h) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("aria-hidden", "true");
+    Object.assign(svg.style, { position: "absolute", inset: "0", width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" });
+    h.root.appendChild(svg);
+    h.svg = svg;
+
+    // Fill layer sits behind the row (the row is position: relative, so it paints on top).
+    const fillSvg = svg.cloneNode(false);
+    h.root.insertBefore(fillSvg, h.root.firstChild);
+    h.fillSvg = fillSvg;
+    h.cells.forEach((cell, index) => {
+      if (!cell.matches(".c-site-header__logo, .c-site-header__icon")) return;
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("class", "c-site-header__fill");
+      path.setAttribute("fill", "currentColor");
+      fillSvg.appendChild(path);
+      const fill = { cell, index, path };
+      h.fills.push(fill);
+      const on = () => { path.dataset.on = ""; };
+      const off = () => { if (!cell.matches(":focus-visible") && !("active" in cell.dataset)) delete path.dataset.on; };
+      cell.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") on(); });
+      cell.addEventListener("pointerleave", off);
+      cell.addEventListener("focus", () => { if (cell.matches(":focus-visible")) on(); });
+      cell.addEventListener("blur", () => { delete path.dataset.on; });
+      cell.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse") return;
+        on();
+        this.flash(cell, h.opts.tapMs, () => delete path.dataset.on);
+      });
+    });
+    this.layout(h);
+  },
+
+  // Offset of a line at a position along it (linear between its points).
+  offAt(line, along) {
+    if (!line || !line.off) return 0;
+    const t = Math.max(0, Math.min(1, (along - line.from) / (line.to - line.from))) * line.count;
+    const i = Math.min(line.count - 1, Math.floor(t));
+    return line.off[i] + (line.off[i + 1] - line.off[i]) * (t - i);
+  },
+
+  renderFills(h) {
+    if (!h.fills.length) return;
+    const width = h.root.getBoundingClientRect().width;
+    const dividers = h.lines.filter((l) => l.axis === "v");
+    const bottom = h.lines.find((l) => l.axis === "h" && Math.abs(l.at - (h.rowH - 0.5)) < 1);
+    const rowH = h.rowH;
+    const steps = Math.max(4, Math.round(rowH / h.opts.segment));
+    h.fills.forEach(({ index, path }) => {
+      const left = index > 0 ? dividers[index - 1] : null;
+      const right = dividers[index] || null;
+      const xl = (y) => (left ? left.at + this.offAt(left, y) : 0);
+      const xr = (y) => (right ? right.at + this.offAt(right, y) : width);
+      const yb = (x) => (bottom ? bottom.at + this.offAt(bottom, x) + 0.5 : rowH);
+      const pts = [[xl(0), 0]];
+      for (let i = 0; i <= steps; i++) { const y = (rowH * i) / steps; pts.push([xr(y), Math.min(y, yb(xr(y)))]); }
+      const x0 = xr(rowH), x1 = xl(rowH);
+      const across = Math.max(2, Math.round(Math.abs(x0 - x1) / h.opts.segment));
+      for (let i = 0; i <= across; i++) { const x = x0 + ((x1 - x0) * i) / across; pts.push([x, yb(x)]); }
+      for (let i = steps; i >= 0; i--) { const y = (rowH * i) / steps; pts.push([xl(y), Math.min(y, yb(xl(y)))]); }
+      path.setAttribute("d", "M" + pts.map((p) => p[0].toFixed(2) + " " + p[1].toFixed(2)).join(" L") + " Z");
+    });
+  },
+
+  layout(h) {
+    const NS = "http://www.w3.org/2000/svg";
+    const hr = h.root.getBoundingClientRect();
+    if (!hr.width) return;
+    const rowH = h.row.getBoundingClientRect().height;
+    h.rowH = rowH;
+    const defs = [];
+    h.cells.slice(0, -1).forEach((c) => {
+      defs.push({ axis: "v", at: c.getBoundingClientRect().right - hr.left - 0.5, from: 0, to: rowH });
+    });
+    if (hr.height - rowH > 1) defs.push({ axis: "h", at: rowH - 0.5, from: 0, to: hr.width });
+    defs.push({ axis: "h", at: hr.height - 0.5, from: 0, to: hr.width });
+
+    while (h.lines.length > defs.length) h.lines.pop().path.remove();
+    defs.forEach((d, i) => {
+      let line = h.lines[i];
+      if (!line) {
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "currentColor");
+        path.setAttribute("stroke-width", "1");
+        path.setAttribute("vector-effect", "non-scaling-stroke");
+        h.svg.appendChild(path);
+        line = h.lines[i] = { path };
+      }
+      const count = Math.max(4, Math.round((d.to - d.from) / h.opts.segment));
+      if (line.count !== count) {
+        line.off = new Float32Array(count + 1);
+        line.vel = new Float32Array(count + 1);
+        line.count = count;
+      }
+      Object.assign(line, d);
+    });
+    this.wake(h, true);
+  },
+
+  wake(h, force = false) {
+    if (force) this.render(h);
+    if (!h.frame) h.frame = requestAnimationFrame(() => this.step(h));
+  },
+
+  step(h) {
+    h.frame = null;
+    const { radius, push, spring } = h.opts;
+    const m = CustomEnv.reducedMotion ? null : h.mouse;
+    let moving = false;
+    h.lines.forEach((line) => {
+      for (let i = 0; i <= line.count; i++) {
+        const along = line.from + ((line.to - line.from) * i) / line.count;
+        let target = 0;
+        if (m) {
+          const px = line.axis === "v" ? line.at : along;
+          const py = line.axis === "v" ? along : line.at;
+          const dist = Math.hypot(px - m.x, py - m.y);
+          if (dist < radius) {
+            const away = line.axis === "v" ? px - m.x : py - m.y;
+            const f = 1 - dist / radius;
+            target = f * f * push * (away < 0 ? -1 : 1);
+          }
+        }
+        line.vel[i] += (target - line.off[i]) * spring.stiffness;
+        line.vel[i] *= spring.damping;
+        line.off[i] += line.vel[i];
+        if (Math.abs(line.vel[i]) > 0.01 || Math.abs(target - line.off[i]) > 0.01) moving = true;
+      }
+    });
+    this.tiltStep(h) && (moving = true);
+    this.render(h);
+    if (moving) h.frame = requestAnimationFrame(() => this.step(h));
+  },
+
+  render(h) {
+    h.lines.forEach((line) => {
+      const pts = [];
+      for (let i = 0; i <= line.count; i++) {
+        const along = line.from + ((line.to - line.from) * i) / line.count;
+        const o = line.off ? line.off[i] : 0;
+        pts.push(line.axis === "v" ? [line.at + o, along] : [along, line.at + o]);
+      }
+      // Smooth curve through the points (quadratic segments between midpoints).
+      let d = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i][0] + pts[i + 1][0]) / 2;
+        const my = (pts[i][1] + pts[i + 1][1]) / 2;
+        d += ` Q${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)} ${mx.toFixed(2)} ${my.toFixed(2)}`;
+      }
+      const last = pts[pts.length - 1];
+      d += ` L${last[0].toFixed(2)} ${last[1].toFixed(2)}`;
+      line.path.setAttribute("d", d);
+    });
+    this.renderFills(h);
+  },
+
+  /* Logo cell */
+  tiltLogo(h, e) {
+    const t = h.tilt.t;
+    if (!e || CustomEnv.reducedMotion || e.pointerType !== "mouse") {
+      t.rx = 0; t.ry = 0; t.s = 1;
+    } else {
+      const r = h.logo.getBoundingClientRect();
+      const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width / 2)));
+      const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height / 2)));
+      t.ry = dx * h.opts.logoTilt;
+      t.rx = -dy * h.opts.logoTilt;
+      t.s = h.opts.logoScale;
+    }
+    this.wake(h);
+  },
+
+  tiltStep(h) {
+    if (!h.mark) return false;
+    const { v, vel, t } = h.tilt;
+    const { stiffness, damping } = h.opts.spring;
+    let moving = false;
+    for (const key of ["rx", "ry", "s"]) {
+      vel[key] += (t[key] - v[key]) * (stiffness + 0.04);
+      vel[key] *= damping - 0.06;
+      v[key] += vel[key];
+      if (Math.abs(vel[key]) > 0.0005 || Math.abs(t[key] - v[key]) > 0.0005) moving = true;
+    }
+    h.mark.style.transform = `rotateX(${v.rx.toFixed(2)}deg) rotateY(${v.ry.toFixed(2)}deg) scale(${v.s.toFixed(4)})`;
+    return moving;
+  },
+
+  flash(el, ms, after) {
+    el.dataset.active = "";
+    clearTimeout(el.__flash);
+    el.__flash = setTimeout(() => { delete el.dataset.active; if (after) after(); }, ms);
+  },
+
+  waitForLoader(h) {
+    const id = h.opts.waitForLoader;
+    const loader = id && document.getElementById(id);
+    if (!loader || loader.hidden || document.documentElement.dataset.logoLoader === "done") return;
+    h.root.dataset.waiting = "";
+    const show = () => {
+      clearTimeout(timer);
+      document.removeEventListener("logoloader:done", show);
+      delete h.root.dataset.waiting;
+    };
+    const timer = setTimeout(show, h.opts.maxWaitMs);
+    document.addEventListener("logoloader:done", show);
+  },
+
+  /* Theme + contact */
+  syncThemeButton(h) {
+    if (h.themeBtn) h.themeBtn.setAttribute("aria-pressed", String(CustomSiteTheme.get() !== CustomSiteTheme.options.themes[0]));
+  },
+
+  isContactOpen(h) {
+    return h.root.dataset.contact === "open";
+  },
+
+  decodeEmail(h) {
+    try { return atob(h.contact.dataset.email || "").split("").reverse().join(""); }
+    catch (e) { return ""; }
+  },
+
+  openContact(h) {
+    if (!h.contact) return;
+    const email = this.decodeEmail(h);
+    const link = h.root.querySelector("[data-email-link]");
+    if (link && email) {
+      link.textContent = email;
+      link.href = "mailto:" + email;
+    }
+    h.root.querySelectorAll("[data-email-link], [data-email-copy]").forEach((el) => el.removeAttribute("tabindex"));
+    h.contactBtn.setAttribute("aria-expanded", "true");
+    CustomSiteTheme.set(CustomSiteTheme.other(CustomSiteTheme.saved()), { save: false }).then(() => {
+      h.root.dataset.contact = "open";
+    });
+  },
+
+  closeContact(h) {
+    h.root.dataset.contact = "closed";
+    h.contactBtn.setAttribute("aria-expanded", "false");
+    h.root.querySelectorAll("[data-email-link], [data-email-copy]").forEach((el) => el.setAttribute("tabindex", "-1"));
+    CustomSiteTheme.set(CustomSiteTheme.saved(), { save: false });
+  },
+
+  copyEmail(h, button) {
+    const email = this.decodeEmail(h);
+    const done = () => {
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = "Copy"; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(email).then(done, () => this.copyFallback(email, done));
+    } else this.copyFallback(email, done);
+  },
+
+  copyFallback(text, done) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    Object.assign(area.style, { position: "fixed", opacity: "0" });
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand("copy"); done(); } catch (e) { /* not allowed */ }
+    area.remove();
+  },
+};
+
 window.CustomLogoLoader = CustomLogoLoader;
 window.CustomPetHead = CustomPetHead;
+window.CustomCornerLogo = CustomCornerLogo;
+window.CustomSiteTheme = CustomSiteTheme;
+window.CustomSiteHeader = CustomSiteHeader;
