@@ -1474,11 +1474,15 @@ const CustomPageTransition = {
     let note = {};
     try { note = JSON.parse(raw) || {}; } catch (e) { /* ignore */ }
     const target = to && to();
-    if (!target || CustomEnv.reducedMotion) { if (after) after(note); return true; }
+    // A page can show a plain frost from its first paint (<html data-arriving>, set by an inline
+    // script in its <head>) until this takes over.
+    const done = () => { delete document.documentElement.dataset.arriving; };
+    if (!target || CustomEnv.reducedMotion) { done(); if (after) after(note); return true; }
     this.busy = true;
     document.documentElement.dataset.pageTransition = "playing";
     const L = this.makeLayer(target, this.pickStyle() === "outline" ? "outline" : "solid");
     L.frost.style.opacity = "1";
+    done();
     L.outlines.forEach((p) => { p.style.strokeDashoffset = "0"; });
     this.setLens(L, 1);
     this.land(L, to, () => { this.busy = false; if (after) after(note); });
