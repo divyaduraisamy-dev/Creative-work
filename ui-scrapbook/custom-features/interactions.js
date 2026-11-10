@@ -604,7 +604,7 @@ const CustomSiteHeader = {
     theme: {},            // options for CustomSiteTheme
     page: null,           // this page's name ("home", "work"); else data-page or "home"
     home: "home",         // the page the logo returns to
-    pages: { home: "./", work: "work" },  // addresses for a full reload when no in-app link exists
+    pages: { home: "./", work: "work", kovu: "kovu" },  // addresses for a full reload when no in-app link exists
     navKey: "site-nav",   // Streamlit: hidden st.page_link per page in st.container(key=navKey-<page>)
     transition: {},       // options for CustomPageTransition
   },

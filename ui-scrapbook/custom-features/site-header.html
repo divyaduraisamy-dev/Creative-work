@@ -2,14 +2,14 @@
   Component: site-header
   Source:    custom; layout inspired by wodniack-dev's header (https://wodniack.dev/, CC BY-NC 4.0):
              a row of cells divided by hairlines. Code written from scratch.
-  Notes:     Logo | About · Work · Contact | LinkedIn | colour toggle (rightmost). Not sticky: it
+  Notes:     Logo | About · Work · KOVU · Contact | LinkedIn | colour toggle (rightmost). Not sticky: it
              scrolls away with the page. With interactions.js (CustomSiteHeader):
                - the hairlines bend away from the cursor and spring back
                - logo, LinkedIn and toggle cells invert on hover; the filled shape's edges are
                  the moving lines, so it stays solid while they bend
                - logo cell: small spring tilt; click = back to the home page (top of it when
                  already there)
-               - Work (data-go="work") opens the Work page: the logo takes over the screen, the
+               - Work / KOVU (data-go="work" / "kovu") open their pages: the logo takes over the screen, the
                  page changes underneath, the logo slides back into this cell
                  (CustomPageTransition)
                - About smooth-scrolls to id="about" (from another page: goes home first)
@@ -304,6 +304,7 @@
     <nav class="c-site-header__cell c-site-header__menu" aria-label="Main">
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
+      <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
     </nav>
     <a class="c-site-header__cell c-site-header__icon" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" data-linkedin>in</a>

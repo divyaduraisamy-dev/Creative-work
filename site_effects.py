@@ -8,6 +8,7 @@ Each function drops one feature into the page with one call:
     fx.corner_logo()   # (alternative to the header) your logo pinned top-left
     fx.pet_head()      # grabbable, tilting dog drawing
     fx.torch_reveal()  # hold and drag around the dog: a light shows a hidden picture
+    fx.home_photo()    # a photo running edge to edge
     fx.wave_field()    # cream wave lines that bend under the cursor, with the required credit
 
 The markup, styles and JavaScript live in ui-scrapbook/ (see ui-scrapbook/FEATURES.md).
@@ -18,6 +19,7 @@ which needs Streamlit 1.40 or newer. Only trusted local files are injected.
 from __future__ import annotations
 
 import base64
+import html
 import json
 import re
 from functools import lru_cache
@@ -186,8 +188,8 @@ def site_header(
     The hairlines bend away from the cursor. Contact inverts the page and shows the email from
     `email_code` (see encode_email). The toggle inverts the page and remembers it.
 
-    Pages: `page` is the name of the page this header is on ("home" or "work"). `pages` maps those
-    names to the st.Page objects from st.navigation; Work then opens the Work page and the logo
+    Pages: `page` is the name of the page this header is on ("home", "work" or "kovu"). `pages` maps those
+    names to the st.Page objects from st.navigation; Work / KOVU then open their pages and the logo
     goes back home, both with the logo taking over the screen in between. About scrolls to
     st.header(..., anchor="about") on the home page (from Work it goes home first).
     `transition_logo`: how the logo looks while it takes over the screen: "solid", "outline"
@@ -252,6 +254,18 @@ def torch_reveal(
         options["image"] = _data_uri(Path(image))
     start = f"CustomTorchReveal.init({json.dumps(on)}, {json.dumps(options)});"
     st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+def home_photo(
+    image: str | Path | None = None,
+    alt: str = "A person in pink walking across a green field toward tall trees under a blue sky",
+) -> None:
+    """A photo that runs edge to edge and keeps its shape. `image` defaults to assets/home-photo.jpg."""
+    img_path = Path(image) if image else CUSTOM / "assets" / "home-photo.jpg"
+    markup = _component("custom-features/home-photo.html")
+    markup = markup.replace('src="assets/home-photo.jpg"', f'src="{_data_uri(img_path)}"')
+    markup = re.sub(r'alt="[^"]*"', 'alt="' + html.escape(alt, quote=True) + '"', markup, count=1)
+    st.html(markup)
 
 
 def wave_field(line_color: str = "#f2ead3", height: str = "clamp(260px, 45vh, 520px)") -> None:
