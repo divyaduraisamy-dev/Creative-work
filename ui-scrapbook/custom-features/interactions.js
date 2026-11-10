@@ -583,9 +583,10 @@ const CustomSiteTheme = {
  * Hover fills: the logo, LinkedIn and toggle cells invert on hover. The fill is an SVG shape
  * (behind the cell contents) whose edges are the same moving dividers and bottom line, so it
  * stays solid while they bend. Without JS the cells use a plain CSS background instead.
- * Logo cell: spring tilt and back-to-top. About / Work scroll to
- * id="about" / id="work". The toggle and Contact use CustomSiteTheme; Contact also slides open
- * the email strip (email decoded from data-email: base64 of the reversed address).
+ * Logo cell: spring tilt; goes home. Work / KOVU open their pages (CustomPageTransition); About
+ * scrolls to id="about". The toggle switches the page colours (CustomSiteTheme). Contact slides
+ * open the inverted email strip without touching the page colours (email decoded from
+ * data-email: base64 of the reversed address).
  */
 const CustomSiteHeader = {
   instances: new Map(),
@@ -649,11 +650,7 @@ const CustomSiteHeader = {
       else CustomEnv.scrollToTop();
       return;
     }
-    if (this.isContactOpen(h)) {
-      h.root.dataset.contact = "closed";
-      h.contactBtn.setAttribute("aria-expanded", "false");
-      CustomSiteTheme.set(CustomSiteTheme.saved(), { animate: false, save: false });
-    }
+    if (this.isContactOpen(h)) this.closeContact(h);
     const svg = h.root.querySelector("[data-logo]");
     const next = () => document.querySelector(`#c-site-header[data-page="${page}"][data-enhanced]`);
     CustomPageTransition.play({
@@ -706,10 +703,7 @@ const CustomSiteHeader = {
       e.preventDefault();
       dest.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
     }));
-    if (h.themeBtn) h.themeBtn.addEventListener("click", () => {
-      if (this.isContactOpen(h)) this.closeContact(h);
-      else CustomSiteTheme.toggle();
-    });
+    if (h.themeBtn) h.themeBtn.addEventListener("click", () => CustomSiteTheme.toggle());
     if (h.contactBtn) h.contactBtn.addEventListener("click", () => {
       if (this.isContactOpen(h)) this.closeContact(h);
       else this.openContact(h);
@@ -956,16 +950,13 @@ const CustomSiteHeader = {
     }
     h.root.querySelectorAll("[data-email-link], [data-email-copy]").forEach((el) => el.removeAttribute("tabindex"));
     h.contactBtn.setAttribute("aria-expanded", "true");
-    CustomSiteTheme.set(CustomSiteTheme.other(CustomSiteTheme.saved()), { save: false }).then(() => {
-      h.root.dataset.contact = "open";
-    });
+    h.root.dataset.contact = "open";
   },
 
   closeContact(h) {
     h.root.dataset.contact = "closed";
     h.contactBtn.setAttribute("aria-expanded", "false");
     h.root.querySelectorAll("[data-email-link], [data-email-copy]").forEach((el) => el.setAttribute("tabindex", "-1"));
-    CustomSiteTheme.set(CustomSiteTheme.saved(), { save: false });
   },
 
   copyEmail(h, button) {

@@ -14,7 +14,8 @@
                  (CustomPageTransition)
                - About smooth-scrolls to id="about" (from another page: goes home first)
                - colour toggle inverts the whole page with a wipe and remembers the choice
-               - Contact inverts the page and slides open a strip with your email (copy button);
+               - Contact slides open an inverted strip with your email (copy button); the page
+                 colours stay as they are;
                  the email is stored scrambled in data-email and only assembled on click
              Without interactions.js: plain borders, links jump to #about / #work, Contact does nothing.
   Hooks:     id="c-site-header" (CustomSiteHeader), data-page (this page's name), [data-logo],
@@ -187,9 +188,13 @@
     background: linear-gradient(90deg, currentColor 50%, transparent 50%);
   }
 
+  /* The strip is inverted (page text colour as its background), so it reads as a drop-down
+     without the rest of the page changing colour. */
   .c-site-header__contact {
     display: grid;
     grid-template-rows: 0fr;
+    background: var(--color-fg);
+    color: var(--color-bg);
     transition: grid-template-rows 0.45s cubic-bezier(0.65, 0, 0.35, 1);
   }
 
@@ -202,19 +207,30 @@
     border-color: transparent;
   }
 
+  /* Clips the contents while the row grows from 0 to its full height. It has no padding of its
+     own, so it can shrink all the way to 0; the spacing lives on __contact-body inside it. */
   .c-site-header__contact-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .c-site-header__contact-body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 12px 20px;
-    min-height: 0;
-    overflow: hidden;
+    padding: 18px 16px;
     font-size: var(--text-link);
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.3s ease, transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
   }
 
-  .c-site-header[data-contact="open"] .c-site-header__contact-inner {
-    padding: 18px 16px;
+  .c-site-header[data-contact="open"] .c-site-header__contact-body {
+    opacity: 1;
+    transform: none;
+    transition-delay: 0.1s, 0s;
   }
 
   .c-site-header__contact-label {
@@ -244,8 +260,8 @@
 
   .c-site-header__copy:hover,
   .c-site-header__copy:focus-visible {
-    background: var(--color-fg);
-    color: var(--color-bg);
+    background: var(--color-bg);
+    color: var(--color-fg);
     outline: none;
   }
 
@@ -285,7 +301,8 @@
 
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
-    .c-site-header__contact {
+    .c-site-header__contact,
+    .c-site-header__contact-body {
       transition: none !important;
     }
   }
@@ -313,10 +330,12 @@
     </button>
   </div>
   <div class="c-site-header__contact" id="c-site-header-contact" data-email="">
-    <div class="c-site-header__contact-inner" aria-live="polite">
-      <span class="c-site-header__contact-label">Email</span>
-      <a class="c-site-header__email" href="#" data-email-link tabindex="-1"></a>
-      <button class="c-site-header__copy" type="button" data-email-copy tabindex="-1">Copy</button>
+    <div class="c-site-header__contact-inner">
+      <div class="c-site-header__contact-body" aria-live="polite">
+        <span class="c-site-header__contact-label">Email</span>
+        <a class="c-site-header__email" href="#" data-email-link tabindex="-1"></a>
+        <button class="c-site-header__copy" type="button" data-email-copy tabindex="-1">Copy</button>
+      </div>
     </div>
   </div>
 </header>
