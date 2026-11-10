@@ -1,0 +1,7 @@
+# Site theme: black background, cream text. Secrets do NOT go here (use .streamlit/secrets.toml).
+[theme]
+base = "dark"
+backgroundColor = "#000000"
+secondaryBackgroundColor = "#111111"
+textColor = "#F2EAD3"
+primaryColor = "#F2EAD3"

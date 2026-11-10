@@ -1,0 +1,49 @@
+<!--
+  Component: wave-field
+  Source:    custom layout around wodniack-dev's WodWaves (CC BY-NC 4.0, credit required)
+  Notes:     A black band of thin cream vertical lines that drift slowly and bend away from the
+             cursor when it passes over. Meant for the bottom of the page, with the required credit
+             line underneath. Line colour = the field's CSS color.
+             Needs gsap and ../wodniack-dev/interactions.js; start with
+             WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");
+  Hooks:     id="c-wave-field" (WodWaves).
+  Tokens:    color.bg/line/text, layout.wave-height
+-->
+<style>
+  .c-waves {
+    --color-bg: #000000;
+    --color-line: #f2ead3;
+    --color-text: #f2ead3;
+    --layout-wave-height: clamp(260px, 45vh, 520px);
+
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .c-waves__field {
+    position: relative;
+    height: var(--layout-wave-height);
+    overflow: hidden;
+    color: var(--color-line);
+  }
+
+  .c-waves__credit {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    font: 11px/1.4 ui-monospace, monospace;
+    opacity: 0.55;
+  }
+
+  .c-waves__credit a {
+    color: inherit;
+  }
+</style>
+
+<section class="c-waves" data-source="custom" aria-label="Decorative wave lines">
+  <div class="c-waves__field" id="c-wave-field" aria-hidden="true"></div>
+  <p class="c-waves__credit">
+    Wave effect adapted from
+    <a href="https://github.com/AntoineW/AW-2025-Portfolio" target="_blank" rel="noopener noreferrer">Antoine Wodniack</a>
+    (<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC 4.0</a>).
+  </p>
+</section>

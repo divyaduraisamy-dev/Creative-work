@@ -1,0 +1,47 @@
+# Secrets — never commit
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environment (uv)
+.venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment files
+.env
+.env.*
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# --- Site repo: only what the site needs ---
+# The scrapbook stays local (it holds rebuilds of other people's sites).
+# Keep only your own features and the wave code the site uses.
+ui-scrapbook/*
+!ui-scrapbook/custom-features/
+!ui-scrapbook/wodniack-dev/
+ui-scrapbook/wodniack-dev/*
+!ui-scrapbook/wodniack-dev/interactions.js
+
+# Leftovers and originals (copies the site uses live in ui-scrapbook/custom-features/assets/)
+app (1).py
+Best KOVU drawing copy.png
+Logo for website - Edited.svg

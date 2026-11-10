@@ -1,0 +1,15 @@
+# This file tells uv what your project needs. You don't edit it by hand
+# in this course — ask Claude to add dependencies for you.
+# Keep it in sync with requirements.txt (Streamlit Community Cloud reads that one).
+
+[project]
+name = "personal-site"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.65",
+]
+
+[tool.uv]
+# Use uv's own Python, never a system or Anaconda one.
+python-preference = "only-managed"
