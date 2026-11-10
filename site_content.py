@@ -48,12 +48,12 @@ class Photo:
 
 @dataclass
 class Pet:
-    caption: str = "Grab here"
+    caption: str = "Pull me"
 
 
 @dataclass
 class Torch:
-    hint: str | None = "Placeholder: hold and drag around KOVU"
+    hint: str | None = "Hold and drag around KOVU"
     image: str | None = None  # file path; None = a pattern made from your logo
 
 
@@ -83,12 +83,12 @@ PAGES = {
     ]),
     "work": Page("Work", "work", [
         Title("Work"),
-        Text("Placeholder: your projects or creative work."),
+        Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work."),
         Waves(),
     ]),
     "kovu": Page("KOVU", "kovu", [
         Title("KOVU"),
-        Pet(caption="Grab here"),
+        Pet(caption="Stretch"),
         Torch(),
         Waves(),
     ]),
