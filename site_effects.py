@@ -7,6 +7,7 @@ Each function drops one feature into the page with one call:
     fx.site_header()   # hairline header: logo, About, Work, Contact (email reveal), LinkedIn, colour toggle
     fx.corner_logo()   # (alternative to the header) your logo pinned top-left
     fx.pet_head()      # grabbable, tilting dog drawing
+    fx.torch_reveal()  # hold and drag around the dog: a light shows a hidden picture
     fx.wave_field()    # cream wave lines that bend under the cursor, with the required credit
 
 The markup, styles and JavaScript live in ui-scrapbook/ (see ui-scrapbook/FEATURES.md).
@@ -42,7 +43,8 @@ def _component(relative: str) -> str:
 
 @lru_cache(maxsize=None)
 def _data_uri(path: Path) -> str:
-    mime = "image/png" if path.suffix == ".png" else "image/svg+xml"
+    types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
+    mime = types.get(path.suffix.lower(), "image/svg+xml")
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
@@ -151,10 +153,12 @@ _PAGE_CSS = """
   .stElementContainer:has(> .stHtml > #c-logo-loader),
   .stElementContainer:has(#site-effects-page-css) { margin-bottom: -1rem; }
   .c-site-header { width: 100vw; margin-left: calc(50% - 50vw); }
+  /* Hidden page links the header clicks to change page without a reload. */
+  .st-key-site-nav { display: none !important; }
 
   /* The features use the page's body font (set in .streamlit/config.toml). */
   :root .c-site-header { --font-ui: "Rubik", sans-serif; }
-  .c-pet__caption, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
+  .c-pet__caption, .c-torch__hint, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
 
   .stApp { transition: none; }
   :root[data-site-theme="light"] .stApp { background-color: #f2ead3; color: #000000; }
@@ -170,22 +174,42 @@ _PAGE_CSS = """
 """
 
 
-def site_header(linkedin: str = "https://www.linkedin.com/", email_code: str = "") -> None:
+def site_header(
+    linkedin: str = "https://www.linkedin.com/",
+    email_code: str = "",
+    page: str = "home",
+    pages: dict | None = None,
+    transition_logo: str = "solid",
+) -> None:
     """Header row inspired by wodniack.dev: logo | About · Work · Contact | LinkedIn | colour toggle.
 
-    The hairlines bend away from the cursor. About / Work scroll to st.header(..., anchor="about")
-    and anchor="work". Contact inverts the page and shows the email from `email_code` (see
-    encode_email). The toggle inverts the page and remembers it. Call it right after logo_loader().
+    The hairlines bend away from the cursor. Contact inverts the page and shows the email from
+    `email_code` (see encode_email). The toggle inverts the page and remembers it.
+
+    Pages: `page` is the name of the page this header is on ("home" or "work"). `pages` maps those
+    names to the st.Page objects from st.navigation; Work then opens the Work page and the logo
+    goes back home, both with the logo taking over the screen in between. About scrolls to
+    st.header(..., anchor="about") on the home page (from Work it goes home first).
+    `transition_logo`: how the logo looks while it takes over the screen: "solid", "outline"
+    (thin lines that draw themselves) or "alternate" (switches every time, for comparing).
+    Call it at the top of every page, right after logo_loader().
     """
     markup, svg = _split_svg(_component("custom-features/site-header.html"))
     restore_svg = (
         'var slot = document.querySelector("#c-site-header [data-svg-slot]");\n'
         f"if (slot) slot.outerHTML = {json.dumps(svg)};\n"
     )
-    options = json.dumps({"linkedin": linkedin, "email": email_code})
+    options = json.dumps({"linkedin": linkedin, "email": email_code, "page": page,
+                          "transition": {"logoStyle": transition_logo}})
     start = restore_svg + f'CustomSiteHeader.init("c-site-header", {options});'
     page_css = _PAGE_CSS.replace("<style>", '<style id="site-effects-page-css">', 1)
     st.html(page_css + markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+    if pages:
+        # One hidden in-app link per page (hidden by _PAGE_CSS); the header clicks them.
+        with st.container(key="site-nav"):
+            for name, target in pages.items():
+                with st.container(key=f"site-nav-{name}"):
+                    st.page_link(target, label=name)
 
 
 def pet_head(image: str | Path | None = None, caption: str = "Placeholder caption: grab me", titles: dict | None = None) -> None:
@@ -199,6 +223,34 @@ def pet_head(image: str | Path | None = None, caption: str = "Placeholder captio
     markup = markup.replace("Placeholder caption: grab me", caption)
     options = json.dumps({"titles": titles} if titles else {})
     start = f'CustomPetHead.init("c-pet-head", {options});'
+    st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+@lru_cache(maxsize=None)
+def _logo_path() -> str:
+    """Path data of your logo (assets/logo.svg), for the torch pattern."""
+    match = re.search(r'<path[^>]*\sd="([^"]+)"', (CUSTOM / "assets" / "logo.svg").read_text(encoding="utf-8"))
+    return match.group(1) if match else ""
+
+
+def torch_reveal(
+    on: str = "c-pet-head",
+    image: str | Path | None = None,
+    hint: str | None = "Placeholder: hold and drag around KOVU",
+    full_width: bool = True,
+) -> None:
+    """Hold the mouse (or a finger) and move: a soft light shows a hidden picture underneath.
+
+    `on` is the element it lives on (default: the KOVU area from pet_head(); KOVU himself can still
+    be grabbed). `image` is the hidden picture; without one it is a pattern made from your logo, in
+    the page's text colour. `hint` is a small line of text under it (None for none).
+    Call it after the element it lives on.
+    """
+    markup = _component("custom-features/torch-reveal.html")
+    options = {"hint": hint, "bleed": full_width, "logoPath": _logo_path()}
+    if image:
+        options["image"] = _data_uri(Path(image))
+    start = f"CustomTorchReveal.init({json.dumps(on)}, {json.dumps(options)});"
     st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
 
 

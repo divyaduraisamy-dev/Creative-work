@@ -1,0 +1,60 @@
+<!--
+  Component: torch-reveal
+  Source:    custom (concept inspired by adrienlamy.fr's click-and-drag trail that shows a hidden
+             layer; code written from scratch, Canvas 2D, no WebGL)
+  Notes:     Turns any element into a dark surface with a hidden picture underneath. Hold the mouse
+             button (or press a finger) and move: a soft round light shows the picture where you
+             go. Let go and the light trail fades away after a moment. A faint ring follows the
+             mouse while hovering so visitors can tell the area is interactive.
+             The hidden picture is a pattern made from your logo, in the element's text colour (so
+             it follows the page colour toggle), until you give it an image (options.image).
+             Parts of the element that are their own toy (options.ignore, e.g. KOVU) keep working
+             and don't light up. Inside the element, touch drags light it up instead of scrolling.
+             Without interactions.js the element is shown as it is, with nothing hidden.
+  Hooks:     CustomTorchReveal.init("<element id>", options). Adds class c-torch to the element,
+             a canvas.c-torch__canvas behind its contents, optional p.c-torch__hint, and
+             data-torch-active while the light is on.
+  Tokens:    layout.torch-padding, the element's own color (pattern colour)
+-->
+<style>
+  .c-torch {
+    --layout-torch-padding: clamp(32px, 8vh, 96px);
+
+    position: relative;
+    padding-block: var(--layout-torch-padding);
+    touch-action: none;
+    isolation: isolate;
+  }
+
+  .c-torch--bleed {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  .c-torch > :not(.c-torch__canvas) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .c-torch__canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .c-torch[data-torch-active] {
+    cursor: none;
+  }
+
+  .c-torch__hint {
+    margin: 0;
+    font: 12px/1.4 ui-monospace, monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+</style>

@@ -8,7 +8,9 @@
  *     CustomPetHead.init("c-pet-head");          // grabbable, tilting dog drawing
  *     CustomCornerLogo.init("c-corner-logo");    // pinned top-left logo
  *     CustomSiteHeader.init("c-site-header");    // header (also starts CustomSiteTheme)
+ *     CustomTorchReveal.init("c-pet-head");      // hold-and-drag light that shows a hidden picture
  *   init() accepts an element id or an element and is safe to call twice.
+ *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
  *
  * Feature modules (default element id):
  *   CustomLogoLoader  #c-logo-loader   outline draw-in, fill, frame lines, lift-off reveal
@@ -39,8 +41,8 @@ const CustomEnv = {
   },
 
   // Scroll the window and any scrolled inner panel (e.g. Streamlit's main section) to the top.
-  scrollToTop() {
-    const behavior = CustomEnv.reducedMotion ? "auto" : "smooth";
+  scrollToTop(instant = false) {
+    const behavior = instant || CustomEnv.reducedMotion ? "auto" : "smooth";
     const scrolled = [document.scrollingElement || document.documentElement];
     document.querySelectorAll("body *").forEach((node) => { if (node.scrollTop > 0) scrolled.push(node); });
     scrolled.forEach((node) => node.scrollTo({ top: 0, behavior }));
@@ -600,6 +602,11 @@ const CustomSiteHeader = {
     linkedin: null,       // URL; otherwise the href in the markup is kept
     email: null,          // encoded email (see Notes); otherwise data-email in the markup
     theme: {},            // options for CustomSiteTheme
+    page: null,           // this page's name ("home", "work"); else data-page or "home"
+    home: "home",         // the page the logo returns to
+    pages: { home: "./", work: "work" },  // addresses for a full reload when no in-app link exists
+    navKey: "site-nav",   // Streamlit: hidden st.page_link per page in st.container(key=navKey-<page>)
+    transition: {},       // options for CustomPageTransition
   },
 
   init(target = "c-site-header", options = {}) {
@@ -621,12 +628,54 @@ const CustomSiteHeader = {
     };
     if (opts.linkedin) root.querySelectorAll("[data-linkedin]").forEach((a) => { a.href = opts.linkedin; });
     if (opts.email && h.contact) h.contact.dataset.email = opts.email;
+    h.page = opts.page || root.dataset.page || opts.home;
+    root.dataset.page = h.page;
+    Object.assign(CustomPageTransition.options, opts.transition);
+    root.querySelectorAll("[data-go]").forEach((a) => { if (opts.pages[a.dataset.go]) a.href = opts.pages[a.dataset.go]; });
     this.instances.set(root, h);
     this.buildSvg(h);
     this.bindEvents(h);
     this.syncThemeButton(h);
     this.waitForLoader(h);
+    // Arrived by a full page reload in the middle of a transition (static sites).
+    CustomPageTransition.arrive({ to: () => root.querySelector("[data-logo]"), after: (note) => this.afterArrive(note) });
     return h;
+  },
+
+  /* Pages: Work opens its own page, the logo goes back home; both with CustomPageTransition. */
+  goTo(h, page, note = {}) {
+    if (page === h.page) {
+      if (note.scrollTo) this.afterArrive(note);
+      else CustomEnv.scrollToTop();
+      return;
+    }
+    if (this.isContactOpen(h)) {
+      h.root.dataset.contact = "closed";
+      h.contactBtn.setAttribute("aria-expanded", "false");
+      CustomSiteTheme.set(CustomSiteTheme.saved(), { animate: false, save: false });
+    }
+    const svg = h.root.querySelector("[data-logo]");
+    const next = () => document.querySelector(`#c-site-header[data-page="${page}"][data-enhanced]`);
+    CustomPageTransition.play({
+      from: svg,
+      navigate: () => this.navigate(h, page, note),
+      ready: () => { const n = next(); return Boolean(n && n !== h.root && n.isConnected); },
+      to: () => { const n = next(); return n && n.querySelector("[data-logo]"); },
+      after: () => this.afterArrive(note),
+    });
+  },
+
+  navigate(h, page, note) {
+    const link = document.querySelector(`.st-key-${h.opts.navKey}-${page} a`);
+    if (link) { link.click(); return; }
+    CustomPageTransition.leave(note);
+    window.location.assign(h.opts.pages[page] || "./");
+  },
+
+  afterArrive(note = {}) {
+    if (!note.scrollTo) return;
+    const dest = document.getElementById(note.scrollTo);
+    if (dest) dest.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
   },
 
   bindEvents(h) {
@@ -642,10 +691,17 @@ const CustomSiteHeader = {
     if (h.logo) {
       h.logo.addEventListener("pointermove", (e) => this.tiltLogo(h, e));
       h.logo.addEventListener("pointerleave", () => this.tiltLogo(h, null));
-      h.logo.addEventListener("click", (e) => { e.preventDefault(); CustomEnv.scrollToTop(); });
+      h.logo.addEventListener("click", (e) => { e.preventDefault(); this.goTo(h, h.opts.home); });
     }
+    root.querySelectorAll("[data-go]").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault();
+      this.goTo(h, a.dataset.go);
+    }));
+    // Section links; a section that lives on another page (data-on-page) goes there first.
     root.querySelectorAll("[data-scroll-to]").forEach((a) => a.addEventListener("click", (e) => {
+      const page = a.dataset.onPage;
       const dest = document.getElementById(a.dataset.scrollTo);
+      if (page && page !== h.page) { e.preventDefault(); this.goTo(h, page, { scrollTo: a.dataset.scrollTo }); return; }
       if (!dest) return;
       e.preventDefault();
       dest.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
@@ -934,8 +990,515 @@ const CustomSiteHeader = {
   },
 };
 
+/* Torch reveal ------------------------------------------------------------------------------------
+ * Three canvases: "art" holds the hidden picture, "mask" holds where the light has been, and the
+ * visible canvas draws art only where the mask is (source-in). Holding the pointer down stamps a
+ * soft round light into the mask along the path (one stamp every quarter radius, so fast moves
+ * stay smooth). options.fadeDelayMs after letting go, the mask fades a little every frame
+ * (destination-out) and is cleared outright once it is nearly gone (avoids 8-bit leftovers).
+ * The art is options.image (cover-fit) or a brick pattern of the logo (options.logoPath) in the
+ * element's text colour, redrawn when the page colours change ("sitetheme:change").
+ * Concept from adrienlamy.fr's drag trail; written from scratch.
+ */
+const CustomTorchReveal = {
+  instances: new Map(),
+  options: {
+    radius: 90,            // px, mouse
+    touchRadius: 70,       // px, finger
+    strength: 0.6,         // how much one stamp lights (0-1); overlapping stamps add up
+    fadeDelayMs: 500,      // wait after letting go before the light fades
+    fade: 0.05,            // share of the light removed per frame while fading
+    fadeFrames: 110,       // frames until the light is cleared completely
+    image: null,           // picture URL / data URI; otherwise the logo pattern
+    logoPath: null,        // SVG path data of the logo (pattern)
+    logoViewBox: [1037, 1157],
+    tile: 118,             // px between logos in the pattern
+    logoSize: 52,          // px width of each logo in the pattern
+    tilt: 12,              // degrees, alternating
+    ignore: ".c-pet__rig", // parts that keep their own behaviour (no light there)
+    busyWhen: '[data-mood="grab"]',  // element state that pauses the torch (KOVU being dragged)
+    hint: null,            // small text added at the end of the element
+    bleed: false,          // run the surface edge to edge
+    ring: true,            // faint ring under the mouse while hovering
+    waitMs: 5000,          // how long to wait for the element to appear
+  },
+
+  init(target = "c-pet-head", options = {}) {
+    const host = CustomEnv.resolve(target);
+    if (!host) {
+      if (typeof target === "string") this.waitFor(target, options);
+      return null;
+    }
+    if (host.dataset.torch) return this.instances.get(host) || null;
+    host.dataset.torch = "on";
+    const opts = { ...this.options, ...options };
+    const canvas = document.createElement("canvas");
+    canvas.className = "c-torch__canvas";
+    canvas.setAttribute("aria-hidden", "true");
+    host.classList.add("c-torch");
+    if (opts.bleed) host.classList.add("c-torch--bleed");
+    host.insertBefore(canvas, host.firstChild);
+    if (opts.hint) {
+      const p = document.createElement("p");
+      p.className = "c-torch__hint";
+      p.textContent = opts.hint;
+      host.appendChild(p);
+    }
+    const t = {
+      host, opts, canvas, ctx: canvas.getContext("2d"),
+      mask: document.createElement("canvas"), art: document.createElement("canvas"),
+      w: 0, h: 0, dpr: 1, down: false, last: null, hover: null, radius: opts.radius,
+      lit: false, upAt: 0, faded: 0, frame: null, sprite: null, spriteR: 0, artToken: 0,
+    };
+    t.mctx = t.mask.getContext("2d");
+    t.actx = t.art.getContext("2d");
+    this.instances.set(host, t);
+    this.bindEvents(t);
+    this.resize(t);
+    return t;
+  },
+
+  // The element may render a moment after this script (Streamlit); wait for it.
+  waitFor(id, options) {
+    const obs = new MutationObserver(() => {
+      if (document.getElementById(id)) { obs.disconnect(); clearTimeout(timer); this.init(id, options); }
+    });
+    const timer = setTimeout(() => obs.disconnect(), this.options.waitMs);
+    obs.observe(document.body, { childList: true, subtree: true });
+  },
+
+  bindEvents(t) {
+    const { host } = t;
+    host.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || this.blocked(t, e)) return;
+      t.down = true;
+      t.radius = e.pointerType === "mouse" ? t.opts.radius : t.opts.touchRadius;
+      try { host.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
+      const p = this.point(t, e);
+      this.stamp(t, p, p);
+      t.last = p;
+      t.hover = null;
+      host.dataset.torchActive = "";
+      this.wake(t);
+    });
+    host.addEventListener("pointermove", (e) => {
+      const p = this.point(t, e);
+      if (t.down) { this.stamp(t, t.last, p); t.last = p; }
+      else t.hover = e.pointerType === "mouse" && !this.blocked(t, e) ? p : null;
+      this.wake(t);
+    });
+    const up = () => {
+      if (!t.down) return;
+      t.down = false;
+      t.last = null;
+      t.upAt = performance.now();
+      delete host.dataset.torchActive;
+      this.wake(t);
+    };
+    host.addEventListener("pointerup", up);
+    host.addEventListener("pointercancel", up);
+    host.addEventListener("pointerleave", () => { t.hover = null; this.wake(t); });
+    if (window.ResizeObserver) new ResizeObserver(() => this.resize(t)).observe(host);
+    else window.addEventListener("resize", () => this.resize(t));
+    document.addEventListener("sitetheme:change", () => requestAnimationFrame(() => this.drawArt(t)));
+  },
+
+  blocked(t, e) {
+    const inIgnored = t.opts.ignore && e.target && e.target.closest && e.target.closest(t.opts.ignore);
+    return Boolean(inIgnored || (t.opts.busyWhen && t.host.matches(t.opts.busyWhen)));
+  },
+
+  point(t, e) {
+    const r = t.host.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  },
+
+  resize(t) {
+    const r = t.host.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(r.width), h = Math.round(r.height);
+    if (!w || !h || (w === t.w && h === t.h && dpr === t.dpr)) return;
+    Object.assign(t, { w, h, dpr });
+    [t.canvas, t.mask, t.art].forEach((c) => { c.width = w * dpr; c.height = h * dpr; });
+    t.lit = false;
+    this.drawArt(t);
+  },
+
+  // A soft round light, drawn once per radius and stamped with drawImage.
+  spriteFor(t) {
+    const r = t.radius;
+    if (t.sprite && t.spriteR === r) return t.sprite;
+    const s = document.createElement("canvas");
+    s.width = s.height = r * 2 * t.dpr;
+    const c = s.getContext("2d");
+    const g = c.createRadialGradient(s.width / 2, s.height / 2, 0, s.width / 2, s.height / 2, s.width / 2);
+    const a = t.opts.strength;
+    g.addColorStop(0, `rgba(0,0,0,${a})`);
+    g.addColorStop(0.45, `rgba(0,0,0,${a * 0.7})`);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, s.width, s.height);
+    t.sprite = s;
+    t.spriteR = r;
+    return s;
+  },
+
+  stamp(t, a, b) {
+    const sprite = this.spriteFor(t);
+    const r = t.radius, d = t.dpr;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const steps = Math.max(1, Math.ceil(dist / (r * 0.25)));
+    t.mctx.globalCompositeOperation = "source-over";
+    for (let i = 1; i <= steps; i++) {
+      const x = a.x + ((b.x - a.x) * i) / steps;
+      const y = a.y + ((b.y - a.y) * i) / steps;
+      t.mctx.drawImage(sprite, (x - r) * d, (y - r) * d);
+    }
+    t.lit = true;
+    t.faded = 0;
+  },
+
+  drawArt(t) {
+    if (!t.w) return;
+    const token = ++t.artToken;
+    const img = new Image();
+    img.onload = () => {
+      if (token !== t.artToken) return;
+      const c = t.actx, d = t.dpr;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, t.art.width, t.art.height);
+      if (t.opts.image) {
+        const s = Math.max(t.art.width / img.naturalWidth, t.art.height / img.naturalHeight);
+        const w = img.naturalWidth * s, h = img.naturalHeight * s;
+        c.drawImage(img, (t.art.width - w) / 2, (t.art.height - h) / 2, w, h);
+      } else this.drawPattern(t, img, c, d);
+      this.render(t);
+    };
+    if (t.opts.image) img.src = t.opts.image;
+    else if (t.opts.logoPath) {
+      const [vw, vh] = t.opts.logoViewBox;
+      const color = getComputedStyle(t.host).color || "#f2ead3";
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw} ${vh}"><path fill="${color}" fill-rule="evenodd" d="${t.opts.logoPath}"/></svg>`;
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+  },
+
+  // Brick layout: every other row shifted half a tile, logos tilted left and right in turn.
+  drawPattern(t, img, c, d) {
+    const { tile, logoSize, tilt, logoViewBox } = t.opts;
+    const lw = logoSize, lh = (logoSize * logoViewBox[1]) / logoViewBox[0];
+    const rowH = tile * 0.8;
+    for (let row = 0, y = rowH / 2; y - rowH / 2 < t.h; row++, y += rowH) {
+      const shift = row % 2 ? tile / 2 : 0;
+      for (let col = 0, x = shift - tile / 2; x - tile / 2 < t.w; col++, x += tile) {
+        c.setTransform(d, 0, 0, d, x * d, y * d);
+        c.rotate((((row + col) % 2 ? 1 : -1) * tilt * Math.PI) / 180);
+        c.drawImage(img, -lw / 2, -lh / 2, lw, lh);
+      }
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+  },
+
+  wake(t) {
+    if (!t.frame) t.frame = requestAnimationFrame(() => this.step(t));
+  },
+
+  step(t) {
+    t.frame = null;
+    let again = false;
+    if (t.lit && !t.down) {
+      if (performance.now() - t.upAt > t.opts.fadeDelayMs) {
+        t.faded++;
+        if (t.faded >= t.opts.fadeFrames) {
+          t.mctx.clearRect(0, 0, t.mask.width, t.mask.height);
+          t.lit = false;
+        } else {
+          t.mctx.globalCompositeOperation = "destination-out";
+          t.mctx.fillStyle = `rgba(0,0,0,${t.opts.fade})`;
+          t.mctx.fillRect(0, 0, t.mask.width, t.mask.height);
+          t.mctx.globalCompositeOperation = "source-over";
+        }
+      }
+      again = t.lit;
+    }
+    this.render(t);
+    if (again) this.wake(t);
+  },
+
+  render(t) {
+    const c = t.ctx, d = t.dpr;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, t.canvas.width, t.canvas.height);
+    if (t.lit) {
+      c.globalCompositeOperation = "source-over";
+      c.drawImage(t.mask, 0, 0);
+      c.globalCompositeOperation = "source-in";
+      c.drawImage(t.art, 0, 0);
+      c.globalCompositeOperation = "source-over";
+    }
+    if (t.opts.ring && t.hover && !t.down) {
+      c.setTransform(d, 0, 0, d, 0, 0);
+      c.strokeStyle = getComputedStyle(t.host).color;
+      c.globalAlpha = 0.4;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.arc(t.hover.x, t.hover.y, t.opts.radius * 0.45, 0, Math.PI * 2);
+      c.stroke();
+      c.globalAlpha = 1;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  },
+};
+
+/* Page transition ---------------------------------------------------------------------------------
+ * Your logo takes over the screen while the next page loads:
+ *   1. the page frosts over (a blurred, lightly tinted glass layer fades in) while a copy of the
+ *      logo moves from the header to the middle of the screen and grows past the edges
+ *      (options.zoom x the screen height), bulging like a fish-eye lens (options.lens)
+ *   2. navigate() runs (Streamlit: a hidden st.page_link is clicked, no reload); the page changes
+ *      under the frost; the transition waits until ready() says the new page is there
+ *   3. the logo shrinks back into the new header's logo cell, the bulge relaxes and the frost
+ *      clears, then after() runs (e.g. scroll to a section)
+ * options.logoStyle: "solid" (the logo as it is), "outline" (thin lines that draw themselves while
+ * it grows and fill in as it lands) or "alternate" (switches every time, for comparing).
+ * The fish-eye bends the logo's own outline (no image filter), so it stays sharp. With reduced
+ * motion the page simply changes. While it plays, <html data-page-transition="playing"> (the header
+ * hides its own logo). Full-reload sites: leave(note) / arrive() on the next page play step 3.
+ */
+const CustomPageTransition = {
+  options: {
+    growSeconds: 1.2,
+    holdSeconds: 0.25,
+    returnSeconds: 1.3,
+    maxWaitMs: 6000,
+    storageKey: "site-page-arrive",
+    zoom: 1.6,             // logo height at its biggest, as a multiple of the screen height
+    lens: 0.45,            // fish-eye strength, 0 = none (below 0.5 so lines never fold)
+    lensRadius: 0.6,       // size of the lens, x the logo's longer side
+    logoStyle: "solid",    // "solid" | "outline" | "alternate"
+    strokeWidth: 1.5,      // outline thickness in screen pixels
+    frostBlur: 18,         // px
+    frostTint: 0.35,       // how much of the page colour is laid over the blur (0-1)
+  },
+  busy: false,
+
+  colors() {
+    const theme = CustomSiteTheme.get();
+    return { bg: CustomSiteTheme.options.colors[theme], fg: CustomSiteTheme.options.colors[CustomSiteTheme.other(theme)] };
+  },
+
+  rgba(hex, alpha) {
+    const n = parseInt(String(hex).replace("#", ""), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  },
+
+  pickStyle() {
+    const style = this.options.logoStyle;
+    if (style !== "alternate") return style;
+    const n = Number(CustomEnv.session.get("site-transition-count") || 0);
+    CustomEnv.session.set("site-transition-count", String(n + 1));
+    return n % 2 ? "outline" : "solid";
+  },
+
+  useLens() {
+    return this.options.lens > 0 && !CustomEnv.reducedMotion;
+  },
+
+  // Frost layer + a big copy of the logo resting in the middle of the screen.
+  makeLayer(svg, style) {
+    const { bg, fg } = this.colors();
+    const o = this.options;
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const vw = vb && vb.width ? vb.width : 100, vh = vb && vb.height ? vb.height : 100;
+    const h = window.innerHeight * o.zoom;
+    const w = (h * vw) / vh;
+    const frost = document.createElement("div");
+    frost.setAttribute("aria-hidden", "true");
+    Object.assign(frost.style, {
+      position: "fixed", inset: "0", zIndex: "2147482500", pointerEvents: "auto", opacity: "0",
+      background: this.rgba(bg, o.frostTint),
+      backdropFilter: `blur(${o.frostBlur}px)`, webkitBackdropFilter: `blur(${o.frostBlur}px)`,
+    });
+    const logo = svg.cloneNode(true);
+    logo.removeAttribute("class");
+    logo.setAttribute("aria-hidden", "true");
+    const left = (window.innerWidth - w) / 2, top = (window.innerHeight - h) / 2;
+    Object.assign(logo.style, {
+      position: "fixed", left: left + "px", top: top + "px", width: w + "px", height: h + "px",
+      zIndex: "2147482501", color: fg, transformOrigin: "0 0", pointerEvents: "none", overflow: "visible",
+    });
+    const L = { frost, logo, w, left, top, style, lens: null, outlines: [], fills: [] };
+    if (style === "outline") {
+      const built = CustomLogoLoader.buildOutlines.call({ options: { strokeWidth: o.strokeWidth } }, logo);
+      L.outlines = built.outlines;
+      L.fills = built.fills;
+    }
+    if (this.useLens()) L.lens = this.addLens(logo, vw, vh);
+    document.body.append(frost, logo);
+    return L;
+  },
+
+  // Fish-eye: every point of the logo's outline is pushed away from the middle, most near the
+  // centre and not at all at the rim (radius options.lensRadius x the logo's longer side):
+  //   r' = r * (1 + k * (1 - r^2)), k up to options.lens (kept under 0.5 so lines never fold).
+  // It bends the shape itself, so the edges stay sharp at any size and it works in every browser.
+  // Logo paths may only use absolute M / C / L / Q / Z commands (every number pair is a point).
+  addLens(svg, vw, vh) {
+    const paths = Array.from(svg.querySelectorAll("path")).map((path) => {
+      const d = path.getAttribute("d") || "";
+      if (/[a-yA-BD-KN-PR-Y]/.test(d.replace(/e-?\d/g, ""))) return null;  // other commands: leave alone
+      const tokens = d.match(/[A-Za-z]|-?\d*\.?\d+(?:e-?\d+)?/g) || [];
+      const nums = [], slots = [];
+      tokens.forEach((tok, i) => { if (!/[A-Za-z]/.test(tok)) { slots.push(i); nums.push(parseFloat(tok)); } });
+      return nums.length % 2 ? null : { path, tokens, slots, nums: Float64Array.from(nums) };
+    }).filter(Boolean);
+    if (!paths.length) return null;
+    return { paths, cx: vw / 2, cy: vh / 2, radius: Math.max(vw, vh) * this.options.lensRadius, last: -1 };
+  },
+
+  setLens(L, amount) {
+    const lens = L.lens;
+    if (!lens) return;
+    const k = this.options.lens * Math.max(0, Math.min(1, amount));
+    if (Math.abs(k - lens.last) < 0.0005) return;
+    lens.last = k;
+    const { cx, cy, radius } = lens;
+    lens.paths.forEach(({ path, tokens, slots, nums }) => {
+      const out = tokens.slice();
+      for (let i = 0; i < nums.length; i += 2) {
+        const dx = nums[i] - cx, dy = nums[i + 1] - cy;
+        const r = Math.hypot(dx, dy) / radius;
+        const f = r < 1 ? 1 + k * (1 - r * r) : 1;
+        out[slots[i]] = (cx + dx * f).toFixed(2);
+        out[slots[i + 1]] = (cy + dy * f).toFixed(2);
+      }
+      path.setAttribute("d", out.join(" "));
+    });
+  },
+
+  // Runs fn(eased progress 0-1) every frame for ms milliseconds.
+  tween(ms, fn, delay = 0) {
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    return new Promise((resolve) => {
+      const start = performance.now() + delay;
+      const frame = (now) => {
+        const t = Math.max(0, Math.min(1, (now - start) / ms));
+        fn(ease(t));
+        if (t < 1) requestAnimationFrame(frame); else resolve();
+      };
+      requestAnimationFrame(frame);
+    });
+  },
+
+  // Transform that puts the big centred logo copy exactly over rect r.
+  over(L, r) {
+    return `translate(${(r.left - L.left).toFixed(2)}px, ${(r.top - L.top).toFixed(2)}px) scale(${(r.width / L.w).toFixed(5)})`;
+  },
+
+  waitFor(ready) {
+    const start = performance.now();
+    return new Promise((resolve) => {
+      const check = () => {
+        if ((ready && ready()) || performance.now() - start > this.options.maxWaitMs) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
+  },
+
+  play({ from, navigate, ready, to, after } = {}) {
+    if (this.busy || !from) return;
+    this.busy = true;
+    const finish = () => { this.busy = false; if (after) after(); };
+    if (CustomEnv.reducedMotion) {
+      navigate();
+      this.waitFor(ready).then(() => { CustomEnv.scrollToTop(true); finish(); });
+      return;
+    }
+    document.documentElement.dataset.pageTransition = "playing";
+    const fromRect = from.getBoundingClientRect();
+    const L = this.makeLayer(from, this.pickStyle());
+    const ms = this.options.growSeconds * 1000, ease = CustomEnv.ease.inOut;
+    const grow = [
+      L.frost.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms * 0.7, easing: ease, fill: "forwards" }).finished,
+      L.logo.animate([{ transform: this.over(L, fromRect), color: getComputedStyle(from).color }, { transform: "none", color: L.logo.style.color }],
+        { duration: ms, easing: ease, fill: "forwards" }).finished,
+      this.tween(ms, (p) => this.setLens(L, p)),
+    ];
+    if (L.style === "outline") {
+      const spread = (ms * 0.45) / Math.max(1, L.outlines.length - 1);
+      L.outlines.forEach((p, i) => p.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+        { duration: ms * 0.75, delay: i * spread, easing: ease, fill: "forwards" }));
+    }
+    Promise.all(grow)
+      .then(() => { navigate(); return this.waitFor(ready); })
+      .then(() => new Promise((r) => setTimeout(r, this.options.holdSeconds * 1000)))
+      .then(() => this.land(L, to, finish))
+      .catch(() => { this.cleanup(L); finish(); });
+  },
+
+  // Step 3: the logo shrinks into the header on the new page, the frost clears.
+  land(L, to, done) {
+    CustomEnv.scrollToTop(true);
+    requestAnimationFrame(() => {
+      const target = to && to();
+      const r = target && target.getBoundingClientRect();
+      const ms = this.options.returnSeconds * 1000, ease = CustomEnv.ease.inOut;
+      const moves = [
+        L.frost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms * 0.8, delay: ms * 0.2, easing: ease, fill: "forwards" }).finished,
+        this.tween(ms * 0.8, (p) => this.setLens(L, 1 - p)),
+      ];
+      if (r && r.width) {
+        moves.push(L.logo.animate([{ transform: "none", color: L.logo.style.color }, { transform: this.over(L, r), color: getComputedStyle(target).color }],
+          { duration: ms, easing: ease, fill: "forwards" }).finished);
+      } else {
+        moves.push(L.logo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms * 0.6, fill: "forwards" }).finished);
+      }
+      if (L.style === "outline") {
+        // The lines fill in as the logo lands, so it matches the header's solid logo.
+        const opts = { duration: ms * 0.4, delay: ms * 0.6, easing: ease, fill: "forwards" };
+        L.fills.forEach((p) => p.animate([{ opacity: 0 }, { opacity: 1 }], opts));
+        L.outlines.forEach((p) => p.animate([{ opacity: 1 }, { opacity: 0 }], opts));
+      }
+      Promise.all(moves).then(() => { this.cleanup(L); done(); }, () => { this.cleanup(L); done(); });
+    });
+  },
+
+  cleanup(L) {
+    delete document.documentElement.dataset.pageTransition;
+    L.frost.remove();
+    // The header's own logo fades back in (0.3s) under the copy, then the copy goes.
+    setTimeout(() => L.logo.remove(), 320);
+  },
+
+  // Full-reload sites: leave a note, then the next page calls arrive().
+  leave(note = {}) {
+    CustomEnv.session.set(this.options.storageKey, JSON.stringify(note));
+  },
+
+  arrive({ to, after } = {}) {
+    const raw = CustomEnv.session.get(this.options.storageKey);
+    if (!raw) return false;
+    try { window.sessionStorage.removeItem(this.options.storageKey); } catch (e) { /* blocked */ }
+    let note = {};
+    try { note = JSON.parse(raw) || {}; } catch (e) { /* ignore */ }
+    const target = to && to();
+    if (!target || CustomEnv.reducedMotion) { if (after) after(note); return true; }
+    this.busy = true;
+    document.documentElement.dataset.pageTransition = "playing";
+    const L = this.makeLayer(target, this.pickStyle() === "outline" ? "outline" : "solid");
+    L.frost.style.opacity = "1";
+    L.outlines.forEach((p) => { p.style.strokeDashoffset = "0"; });
+    this.setLens(L, 1);
+    this.land(L, to, () => { this.busy = false; if (after) after(note); });
+    return true;
+  },
+};
+
 window.CustomLogoLoader = CustomLogoLoader;
 window.CustomPetHead = CustomPetHead;
 window.CustomCornerLogo = CustomCornerLogo;
 window.CustomSiteTheme = CustomSiteTheme;
 window.CustomSiteHeader = CustomSiteHeader;
+window.CustomTorchReveal = CustomTorchReveal;
+window.CustomPageTransition = CustomPageTransition;
