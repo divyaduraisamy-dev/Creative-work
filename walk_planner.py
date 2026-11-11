@@ -21,6 +21,7 @@ HEADLINE_RECOVERY = "60"
 DEFAULT_WEIGHT_KG = 30.0
 DEFAULT_LENGTH_CM = 55.0
 DEFAULT_ACTIVITY = "OB"
+LB_PER_KG = 2.20462
 DISCLAIMER = (
     "Guidance only, not veterinary advice. The model is from my IST707 project: it learned from a "
     "small study of working dogs in three months of the year, and doesn't know your dog's coat, "
@@ -145,11 +146,18 @@ def render() -> None:
         st.write("Enter your city to see a dog's heat risk for the next 12 hours. Each hour shows the risk "
                  "at 15, 30 and 60 minutes after finishing about 15 minutes of hard exercise.")
         city = st.text_input("Your city", placeholder="Syracuse, NY", key="walk-city")
-        c1, c2 = st.columns(2)
-        weight_kg = c1.number_input("Your dog's weight (kg)", min_value=2.0, max_value=90.0,
-                                    value=DEFAULT_WEIGHT_KG, step=0.5, help="1 kg is about 2.2 lb.",
-                                    key="walk-weight")
-        unit = c2.radio("Temperature", ["°F", "°C"], horizontal=True, key="walk-unit")
+        c1, c2, c3 = st.columns([2, 1, 1])
+        weight_unit = c2.radio("Weight in", ["kg", "lb"], horizontal=True, key="walk-weight-unit")
+        if weight_unit == "lb":
+            # Its own key, so switching units starts from the notebook dog's weight in that unit.
+            weight_lb = c1.number_input("Your dog's weight (lb)", min_value=4.0, max_value=200.0,
+                                        value=round(DEFAULT_WEIGHT_KG * LB_PER_KG, 1), step=1.0,
+                                        key="walk-weight-lb")
+            weight_kg = weight_lb / LB_PER_KG
+        else:
+            weight_kg = c1.number_input("Your dog's weight (kg)", min_value=2.0, max_value=90.0,
+                                        value=DEFAULT_WEIGHT_KG, step=0.5, key="walk-weight")
+        unit = c3.radio("Temperature", ["°F", "°C"], horizontal=True, key="walk-unit")
 
         if not city.strip():
             st.caption(DISCLAIMER)
