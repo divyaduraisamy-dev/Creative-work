@@ -10,7 +10,8 @@
                <img data-layer="body">  <div data-layer="head"> … </div>
                inside the head: data-layer="ear-left" / "ear-right" (flop with a lag) and
                data-face="idle|hover|grab" images (only the matching one shows).
-             Without interactions.js it is a still image.
+             Without interactions.js it is a still image. Class c-pet--still: no grab cursor
+             (used when the drawing has to stay put, e.g. lined up with a painting).
   Hooks:     id="c-pet-head" (CustomPetHead), .c-pet__rig, [data-layer], [data-face].
   Tokens:    color.bg/text, layout.pet-width, motion (spring settings live in the JS module)
 -->
@@ -45,6 +46,8 @@
     transform-origin: 50% 60%;
     will-change: transform;
   }
+
+  .c-pet--still .c-pet__rig { cursor: auto; will-change: auto; }
 
   .c-pet[data-mood="grab"] .c-pet__rig {
     cursor: grabbing;

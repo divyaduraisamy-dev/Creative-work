@@ -27,6 +27,8 @@ from pathlib import Path
 
 import streamlit as st
 
+import site_content as content
+
 SCRAPBOOK = Path(__file__).resolve().parent / "ui-scrapbook"
 CUSTOM = SCRAPBOOK / "custom-features"
 GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"
@@ -160,7 +162,7 @@ _PAGE_CSS = """
 
   /* The features use the page's body font (set in .streamlit/config.toml). */
   :root .c-site-header { --font-ui: "Rubik", sans-serif; }
-  .c-pet__caption, .c-torch__hint, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
+  .c-pet__caption, .c-torch__hint, .c-walk__btn, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
 
   .stApp { transition: none; }
   :root[data-site-theme="light"] .stApp { background-color: #f2ead3; color: #000000; }
@@ -170,6 +172,9 @@ _PAGE_CSS = """
   :root[data-site-theme="light"] .stApp [data-testid="stMarkdownContainer"],
   :root[data-site-theme="light"] .stApp [data-testid="stHeadingWithActionElements"] { color: #000000; }
   :root[data-site-theme="light"] .c-pet { --color-bg: #f2ead3; --color-text: #000000; }
+  /* The walk planner shows once the walk button has been pulled (CustomWalkPlanner). */
+  :root:not([data-walk-open]) .st-key-walk-planner { display: none !important; }
+  .st-key-walk-planner { scroll-margin-top: 1rem; }
   :root[data-site-theme="light"] .c-pet__img { filter: brightness(0); }
   :root[data-site-theme="light"] .c-waves { --color-bg: #f2ead3; --color-text: #000000; --color-line: #000000; }
 </style>
@@ -214,18 +219,51 @@ def site_header(
                     st.page_link(target, label=name)
 
 
-def pet_head(image: str | Path | None = None, caption: str = "Placeholder caption: grab me", titles: dict | None = None) -> None:
+def pet_head(
+    image: str | Path | None = None,
+    caption: str = "Placeholder caption: grab me",
+    titles: dict | None = None,
+    still: bool = False,
+) -> None:
     """The grabbable dog drawing. `image` defaults to the cream KOVU placeholder.
+
+    caption "" leaves the caption out. still=True: the drawing stays put (no grab, stretch or tilt).
 
     titles: optional browser-tab titles per mood, e.g. {"idle": "Kovu :D", "hover": "Kovu :o", "grab": "Kovu x/"}.
     """
     img_path = Path(image) if image else CUSTOM / "assets" / "kovu-placeholder.png"
     markup = _component("custom-features/pet-head.html")
     markup = markup.replace('src="assets/kovu-placeholder.png"', f'src="{_data_uri(img_path)}"')
-    markup = markup.replace("Placeholder caption: grab me", caption)
+    markup = _pet_markup(markup, caption, still)
+    if still:
+        st.html(markup)
+        return
     options = json.dumps({"titles": titles} if titles else {})
     start = f'CustomPetHead.init("c-pet-head", {options});'
     st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+def _pet_markup(markup: str, caption: str, still: bool) -> str:
+    if caption:
+        markup = markup.replace("Placeholder caption: grab me", html.escape(caption))
+    else:
+        markup = re.sub(r"\s*<figcaption.*?</figcaption>", "", markup, flags=re.S)
+    if still:
+        markup = markup.replace('class="c-pet"', 'class="c-pet c-pet--still"', 1)
+    return markup
+
+
+def walk_button(text: str = "What time should we go on a walk?") -> None:
+    """A pill button you can grab and pull; it stretches and wobbles back (KOVU's stretch)."""
+    markup = _component("custom-features/walk-button.html")
+    markup = markup.replace(">What time should we go on a walk?<", f">{html.escape(text)}<", 1)
+    start = (f"CustomPetHead.init(\"c-walk-button\", {json.dumps(WALK_OPTIONS)}); "
+             'CustomWalkPlanner.init("c-walk-button");')
+    st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
+
+
+# Stretch settings for the walk button (no 3D tilt; a little more give than KOVU).
+WALK_OPTIONS = {"maxTilt": 0, "hoverScale": 1.03, "maxPull": 110, "maxStretch": 0.3}
 
 
 @lru_cache(maxsize=None)
@@ -240,17 +278,27 @@ def torch_reveal(
     image: str | Path | None = None,
     hint: str | None = "Placeholder: hold and drag around KOVU",
     full_width: bool = True,
+    frames: str | Path | None = None,
+    match_drawing: bool = True,
 ) -> None:
     """Hold the mouse (or a finger) and move: a soft light shows a hidden picture underneath.
 
     `on` is the element it lives on (default: the KOVU area from pet_head(); KOVU himself can still
     be grabbed). `image` is the hidden picture; without one it is a pattern made from your logo, in
-    the page's text colour. `hint` is a small line of text under it (None for none).
+    the page's text colour. `frames` is a folder of pictures played in name order each time you
+    press (then it rests on the last one); it wins over `image`. With `match_drawing` they are lined
+    up under KOVU's drawing (content.DRAWING_BOX) and their edge colours fill the rest. `hint` is a small line of text
+    under it (None for none).
     Call it after the element it lives on.
     """
     markup = _component("custom-features/torch-reveal.html")
     options = {"hint": hint, "bleed": full_width, "logoPath": _logo_path()}
-    if image:
+    if frames:
+        options["frames"] = [_data_uri(p) for p in content.frame_files(frames)]
+        if match_drawing:
+            options.update(alignTo=".c-pet__img", alignBox=content.DRAWING_BOX, extendEdges=True,
+                           over=True, ignore=None, busyWhen=None)
+    elif image:
         options["image"] = _data_uri(Path(image))
     start = f"CustomTorchReveal.init({json.dumps(on)}, {json.dumps(options)});"
     st.html(markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)

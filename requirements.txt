@@ -1,3 +1,6 @@
 # Streamlit Community Cloud reads this file when deploying (Gate 8).
 # Keep it in sync with pyproject.toml — ask Claude to update both together.
 streamlit>=1.65
+pandas>=3.1.1
+requests>=2.34.2
+scikit-learn>=1.9.1

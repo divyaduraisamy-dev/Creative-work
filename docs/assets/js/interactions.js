@@ -9,6 +9,7 @@
  *     CustomCornerLogo.init("c-corner-logo");    // pinned top-left logo
  *     CustomSiteHeader.init("c-site-header");    // header (also starts CustomSiteTheme)
  *     CustomTorchReveal.init("c-pet-head");      // hold-and-drag light that shows a hidden picture
+ *     CustomWalkPlanner.init("c-walk-button");   // pulling the walk button opens the walk planner
  *   init() accepts an element id or an element and is safe to call twice.
  *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
  *
@@ -344,6 +345,8 @@ const CustomPetHead = {
     pet.vel.x -= pet.value.x * 0.25;
     pet.vel.y -= pet.value.y * 0.25;
     pet.vel.stretch -= pet.value.stretch * 0.5;
+    const pull = Math.min(1, Math.hypot(pet.value.x, pet.value.y) / pet.opts.maxPull);
+    pet.root.dispatchEvent(new CustomEvent("pet:release", { bubbles: true, detail: { pull } }));
     this.setMood(pet, pet.rig.matches(":hover") ? "hover" : "idle");
     this.wake(pet);
   },
@@ -987,8 +990,11 @@ const CustomSiteHeader = {
  * soft round light into the mask along the path (one stamp every quarter radius, so fast moves
  * stay smooth). options.fadeDelayMs after letting go, the mask fades a little every frame
  * (destination-out) and is cleared outright once it is nearly gone (avoids 8-bit leftovers).
- * The art is options.image (cover-fit) or a brick pattern of the logo (options.logoPath) in the
- * element's text colour, redrawn when the page colours change ("sitetheme:change").
+ * The art is options.frames (a list of pictures played in order, once per press, options.frameMs
+ * each, then resting on the last), options.image (one picture), or a brick pattern of the logo
+ * (options.logoPath) in the element's text colour, redrawn when the page colours change
+ * ("sitetheme:change"). Pictures are cover-fit: they fill the element and the overflow is cropped.
+ * Frames are loaded and decoded up front, so playing them only copies a ready picture per step.
  * Concept from adrienlamy.fr's drag trail; written from scratch.
  */
 const CustomTorchReveal = {
@@ -1000,6 +1006,13 @@ const CustomTorchReveal = {
     fadeDelayMs: 500,      // wait after letting go before the light fades
     fade: 0.05,            // share of the light removed per frame while fading
     fadeFrames: 110,       // frames until the light is cleared completely
+    frames: null,          // list of picture URLs / data URIs, played in order on each press
+    frameMs: 410,          // time from one frame to the next (18 frames: about 7 seconds)
+    crossfade: true,       // each frame fades into the next instead of switching
+    alignTo: null,         // element inside the host to line the picture up with (see placement)
+    alignBox: null,        // [left, top, right, bottom] share of the picture where that element sits
+    extendEdges: false,    // fill space around a lined-up picture by stretching its edge colours
+    edgeInset: 0.01,       // how far inside the edge (share of the picture) the stretched strip is
     image: null,           // picture URL / data URI; otherwise the logo pattern
     logoPath: null,        // SVG path data of the logo (pattern)
     logoViewBox: [1037, 1157],
@@ -1010,7 +1023,8 @@ const CustomTorchReveal = {
     busyWhen: '[data-mood="grab"]',  // element state that pauses the torch (KOVU being dragged)
     hint: null,            // small text added at the end of the element
     bleed: false,          // run the surface edge to edge
-    ring: true,            // faint ring under the mouse while hovering
+    over: false,           // light paints on top of the element's contents (hint stays above)
+    ring: false,           // true: faint ring under the mouse while hovering
     waitMs: 5000,          // how long to wait for the element to appear
   },
 
@@ -1028,6 +1042,7 @@ const CustomTorchReveal = {
     canvas.setAttribute("aria-hidden", "true");
     host.classList.add("c-torch");
     if (opts.bleed) host.classList.add("c-torch--bleed");
+    if (opts.over) host.classList.add("c-torch--over");
     host.insertBefore(canvas, host.firstChild);
     if (opts.hint) {
       const p = document.createElement("p");
@@ -1040,9 +1055,11 @@ const CustomTorchReveal = {
       mask: document.createElement("canvas"), art: document.createElement("canvas"),
       w: 0, h: 0, dpr: 1, down: false, last: null, hover: null, radius: opts.radius,
       lit: false, upAt: 0, faded: 0, frame: null, sprite: null, spriteR: 0, artToken: 0,
+      pics: [], shown: -1, playAt: 0, playing: false,
     };
     t.mctx = t.mask.getContext("2d");
     t.actx = t.art.getContext("2d");
+    if (opts.frames && opts.frames.length) this.loadFrames(t);
     this.instances.set(host, t);
     this.bindEvents(t);
     this.resize(t);
@@ -1070,6 +1087,7 @@ const CustomTorchReveal = {
       t.last = p;
       t.hover = null;
       host.dataset.torchActive = "";
+      if (t.pics.length) { t.playing = true; t.playAt = performance.now(); this.showFrame(t, 0); }
       this.wake(t);
     });
     host.addEventListener("pointermove", (e) => {
@@ -1149,8 +1167,127 @@ const CustomTorchReveal = {
     t.faded = 0;
   },
 
+  // Load every frame and decode it now, so playback never waits on the network or the decoder.
+  // Each frame is also drawn once, off screen, while the page is idle: the browser's first real draw
+  // of a big picture is slow, and doing it early keeps the first press from stuttering.
+  loadFrames(t) {
+    const scratch = document.createElement("canvas").getContext("2d");
+    const later = window.requestIdleCallback || ((fn) => setTimeout(fn, 50));
+    t.pics = t.opts.frames.map((src) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+      const ready = () => {
+        if (img.ready) return;
+        img.ready = true;
+        later(() => scratch.drawImage(img, 0, 0, 1, 1));
+      };
+      (img.decode ? img.decode() : Promise.reject()).then(ready, () => { img.onload = ready; if (img.complete) ready(); });
+      return img;
+    });
+  },
+
+  // Put the frames at position pos on the art canvas: pos 3.4 is frame 3 with 40% of frame 4
+  // faded over it. A frame that isn't loaded yet falls back to the nearest earlier ready one.
+  showFrame(t, pos) {
+    const last = t.pics.length - 1;
+    pos = Math.max(0, Math.min(pos, last));
+    let k = Math.floor(pos);
+    while (k >= 0 && !t.pics[k].ready) k--;
+    if (k < 0 || !t.w) return;
+    const next = t.pics[k + 1];
+    const mix = next && next.ready && k === Math.floor(pos) && t.opts.crossfade ? pos - k : 0;
+    const key = k + mix;
+    if (key === t.shown) return;
+    t.shown = key;
+    this.clearArt(t);
+    this.placePic(t, t.pics[k], 1);
+    if (mix > 0) this.placePic(t, next, mix);
+  },
+
+  clearArt(t) {
+    t.actx.setTransform(1, 0, 0, 1, 0, 0);
+    t.actx.globalAlpha = 1;
+    t.actx.clearRect(0, 0, t.art.width, t.art.height);
+  },
+
+  // Where a picture goes, in canvas pixels. With options.alignTo, the picture is scaled and moved
+  // so that options.alignBox (the share of the picture where that element's drawing sits:
+  // [left, top, right, bottom], 0-1) lands exactly on the element, e.g. a painting under its own
+  // line drawing. Otherwise it is cover-fit (fills the element, overflow cropped).
+  placement(t, img) {
+    const W = t.art.width, H = t.art.height, d = t.dpr;
+    const el = t.opts.alignTo && [...t.host.querySelectorAll(t.opts.alignTo)].find((e) => e.offsetWidth);
+    if (el && t.opts.alignBox) {
+      const [x0, y0, x1, y1] = t.opts.alignBox;
+      const box = this.boxIn(t.host, el);
+      const w = (box.w / (x1 - x0)) * d;
+      const h = (box.h / (y1 - y0)) * d;
+      return { x: box.x * d - x0 * w, y: box.y * d - y0 * h, w, h };
+    }
+    const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    const w = img.naturalWidth * s, h = img.naturalHeight * s;
+    return { x: (W - w) / 2, y: (H - h) / 2, w, h };
+  },
+
+  // An element's untransformed box inside host (so KOVU's tilt and stretch don't move the painting).
+  boxIn(host, el) {
+    let x = 0, y = 0, n = el;
+    while (n && n !== host) {
+      x += n.offsetLeft; y += n.offsetTop;
+      const parent = n.offsetParent;
+      if (parent && parent !== host && !host.contains(parent)) break;
+      n = parent;
+    }
+    if (n !== host) {
+      const a = host.getBoundingClientRect(), b = el.getBoundingClientRect();
+      return { x: b.left - a.left, y: b.top - a.top, w: b.width, h: b.height };
+    }
+    return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+  },
+
+  // Draw a picture at its placement. With options.extendEdges, any space left around it is filled
+  // by stretching a thin strip from just inside each edge outwards (so the colour carries on).
+  placePic(t, img, alpha) {
+    const c = t.actx, W = t.art.width, H = t.art.height;
+    const p = this.placement(t, img);
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    c.globalAlpha = alpha;
+    c.drawImage(img, p.x, p.y, p.w, p.h);
+    if (t.opts.extendEdges) {
+      const inset = t.opts.edgeInset, sx = (iw * inset) | 0, sy = (ih * inset) | 0;
+      const left = Math.max(0, p.x), right = Math.min(W, p.x + p.w);
+      const top = Math.max(0, p.y), bottom = Math.min(H, p.y + p.h);
+      // the visible part of the picture, as source rows/columns
+      const srcY = ((top - p.y) / p.h) * ih, srcH = ((bottom - top) / p.h) * ih;
+      const srcX = ((left - p.x) / p.w) * iw, srcW = ((right - left) / p.w) * iw;
+      if (left > 0) c.drawImage(img, sx, srcY, 1, srcH, 0, top, left, bottom - top);
+      if (right < W) c.drawImage(img, iw - sx - 1, srcY, 1, srcH, right, top, W - right, bottom - top);
+      if (top > 0) c.drawImage(img, srcX, sy, srcW, 1, left, 0, right - left, top);
+      if (bottom < H) c.drawImage(img, srcX, ih - sy - 1, srcW, 1, left, bottom, right - left, H - bottom);
+      // corners: the corner colour
+      if (left > 0 && top > 0) c.drawImage(img, sx, sy, 1, 1, 0, 0, left, top);
+      if (right < W && top > 0) c.drawImage(img, iw - sx - 1, sy, 1, 1, right, 0, W - right, top);
+      if (left > 0 && bottom < H) c.drawImage(img, sx, ih - sy - 1, 1, 1, 0, bottom, left, H - bottom);
+      if (right < W && bottom < H) c.drawImage(img, iw - sx - 1, ih - sy - 1, 1, 1, right, bottom, W - right, H - bottom);
+    }
+    c.globalAlpha = 1;
+  },
+
+  coverFit(t, img) {
+    this.clearArt(t);
+    this.placePic(t, img, 1);
+  },
+
   drawArt(t) {
     if (!t.w) return;
+    if (t.pics.length) {
+      const i = t.shown < 0 ? t.pics.length - 1 : t.shown;
+      t.shown = -1;
+      this.showFrame(t, i);
+      this.render(t);
+      return;
+    }
     const token = ++t.artToken;
     const img = new Image();
     img.onload = () => {
@@ -1158,11 +1295,8 @@ const CustomTorchReveal = {
       const c = t.actx, d = t.dpr;
       c.setTransform(1, 0, 0, 1, 0, 0);
       c.clearRect(0, 0, t.art.width, t.art.height);
-      if (t.opts.image) {
-        const s = Math.max(t.art.width / img.naturalWidth, t.art.height / img.naturalHeight);
-        const w = img.naturalWidth * s, h = img.naturalHeight * s;
-        c.drawImage(img, (t.art.width - w) / 2, (t.art.height - h) / 2, w, h);
-      } else this.drawPattern(t, img, c, d);
+      if (t.opts.image) this.coverFit(t, img);
+      else this.drawPattern(t, img, c, d);
       this.render(t);
     };
     if (t.opts.image) img.src = t.opts.image;
@@ -1197,6 +1331,12 @@ const CustomTorchReveal = {
   step(t) {
     t.frame = null;
     let again = false;
+    if (t.playing) {
+      const pos = (performance.now() - t.playAt) / t.opts.frameMs;
+      this.showFrame(t, pos);
+      if (pos >= t.pics.length - 1 && t.shown === t.pics.length - 1) t.playing = false;
+      else again = true;
+    }
     if (t.lit && !t.down) {
       if (performance.now() - t.upAt > t.opts.fadeDelayMs) {
         t.faded++;
@@ -1238,6 +1378,52 @@ const CustomTorchReveal = {
       c.globalAlpha = 1;
       c.setTransform(1, 0, 0, 1, 0, 0);
     }
+  },
+};
+
+/* Walk planner opener ------------------------------------------------------------------------------
+ * Pulling (or clicking / pressing Enter on) the walk button opens the walk planner: it sets
+ * <html data-walk-open> (page CSS shows the planner only then), scrolls to it and focuses its
+ * first field. Where there is no planner on the page (the plain web version), it goes to
+ * options.href instead. A page address with ?walk opens it straight away.
+ */
+const CustomWalkPlanner = {
+  options: {
+    panel: ".st-key-walk-planner",  // the planner (Streamlit container key="walk-planner")
+    href: null,                     // where to go when the page has no planner
+    waitMs: 6000,
+  },
+
+  init(target = "c-walk-button", options = {}) {
+    const root = CustomEnv.resolve(target);
+    if (!root || root.dataset.walkPlanner) return;
+    root.dataset.walkPlanner = "on";
+    const opts = { ...this.options, ...options };
+    const open = () => this.open(opts);
+    root.addEventListener("pet:release", open);
+    root.addEventListener("click", open);
+    if (/[?&]walk\b/.test(window.location.search)) this.open(opts, true);
+  },
+
+  open(opts, fromAddress = false) {
+    const started = performance.now();
+    const go = () => {
+      const panel = document.querySelector(opts.panel);
+      if (!panel) {
+        if (performance.now() - started < (fromAddress ? opts.waitMs : 0)) return void setTimeout(go, 100);
+        if (opts.href && !fromAddress) window.location.assign(opts.href);
+        return;
+      }
+      const first = !("walkOpen" in document.documentElement.dataset);
+      document.documentElement.dataset.walkOpen = "";
+      if (!first && !fromAddress) return;
+      requestAnimationFrame(() => {
+        panel.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
+        const field = panel.querySelector("input");
+        if (field) setTimeout(() => field.focus({ preventScroll: true }), 400);
+      });
+    };
+    go();
   },
 };
 
@@ -1497,3 +1683,4 @@ window.CustomSiteTheme = CustomSiteTheme;
 window.CustomSiteHeader = CustomSiteHeader;
 window.CustomTorchReveal = CustomTorchReveal;
 window.CustomPageTransition = CustomPageTransition;
+window.CustomWalkPlanner = CustomWalkPlanner;

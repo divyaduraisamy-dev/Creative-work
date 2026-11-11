@@ -4,12 +4,13 @@
              layer; code written from scratch, Canvas 2D, no WebGL)
   Notes:     Turns any element into a dark surface with a hidden picture underneath. Hold the mouse
              button (or press a finger) and move: a soft round light shows the picture where you
-             go. Let go and the light trail fades away after a moment. A faint ring follows the
-             mouse while hovering so visitors can tell the area is interactive.
+             go. Let go and the light trail fades away after a moment. (Optional: ring: true shows a
+             faint ring under the mouse while hovering; off on this site.)
              The hidden picture is a pattern made from your logo, in the element's text colour (so
              it follows the page colour toggle), until you give it an image (options.image).
              Parts of the element that are their own toy (options.ignore, e.g. KOVU) keep working
              and don't light up. Inside the element, touch drags light it up instead of scrolling.
+             options.over: the light paints over the element's contents instead of behind them.
              Without interactions.js the element is shown as it is, with nothing hidden.
   Hooks:     CustomTorchReveal.init("<element id>", options). Adds class c-torch to the element,
              a canvas.c-torch__canvas behind its contents, optional p.c-torch__hint, and
@@ -35,6 +36,11 @@
     position: relative;
     z-index: 1;
   }
+
+  /* Over mode: the light paints on top of the element's contents (e.g. a still drawing whose
+     own painted version shows through); the hint stays readable above it. */
+  .c-torch--over > .c-torch__canvas { z-index: 2; }
+  .c-torch--over > .c-torch__hint { z-index: 3; }
 
   .c-torch__canvas {
     position: absolute;

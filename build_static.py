@@ -24,12 +24,14 @@ import shutil
 from pathlib import Path
 
 import site_content as content
-from site_content import Heading, Page, Pet, Photo, Text, Title, Torch, Waves
+from site_content import Heading, Page, Pet, Photo, Text, Title, Torch, WalkButton, WalkPlanner, Waves
 
 ROOT = Path(__file__).resolve().parent
 SCRAPBOOK = ROOT / "ui-scrapbook"
 CUSTOM = SCRAPBOOK / "custom-features"
 OUT = ROOT / "docs"
+# Stretch settings for the walk button (same as site_effects.WALK_OPTIONS).
+WALK_OPTIONS = {"maxTilt": 0, "hoverScale": 1.03, "maxPull": 110, "maxStretch": 0.3}
 GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"
 FONTS_URL = (
     "https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@100;300;400;900"
@@ -52,12 +54,13 @@ def esc(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def copy_asset(source: Path) -> str:
-    """Copy a file into docs/assets and return its path relative to the site root."""
-    target = OUT / "assets" / source.name
+def copy_asset(source: Path, folder: str = "") -> str:
+    """Copy a file into docs/assets (or a folder inside it); return its path from the site root."""
+    relative = f"{folder}/{source.name}" if folder else source.name
+    target = OUT / "assets" / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
-    return f"assets/{source.name}"
+    return f"assets/{relative}"
 
 
 # Page-wide styles: what Streamlit's theme gave the app (black page, cream text, Londrina Solid
@@ -92,7 +95,7 @@ PAGE_CSS = """
   }
 
   :root .c-site-header { --font-ui: "Rubik", sans-serif; }
-  .c-pet__caption, .c-torch__hint, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
+  .c-pet__caption, .c-torch__hint, .c-walk__btn, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
 
   :root[data-site-theme="light"] .c-pet { --color-bg: #f2ead3; --color-text: #000000; }
   :root[data-site-theme="light"] .c-pet__img { filter: brightness(0); }
@@ -163,15 +166,36 @@ def render_page(name: str, page: Page) -> str:
             src = copy_asset(CUSTOM / "assets" / "kovu-placeholder.png")
             markup = component("custom-features/pet-head.html")
             markup = markup.replace('src="assets/kovu-placeholder.png"', f'src="{prefix}{src}"')
-            markup = markup.replace("Placeholder caption: grab me", esc(block.caption))
+            if block.caption:
+                markup = markup.replace("Placeholder caption: grab me", esc(block.caption))
+            else:
+                markup = re.sub(r"\s*<figcaption.*?</figcaption>", "", markup, flags=re.S)
+            if block.still:
+                markup = markup.replace('class="c-pet"', 'class="c-pet c-pet--still"', 1)
             body.append(once("pet", markup))
-            start.append('CustomPetHead.init("c-pet-head");')
+            if not block.still:
+                start.append('CustomPetHead.init("c-pet-head");')
         elif isinstance(block, Torch):
             body.append(once("torch", component("custom-features/torch-reveal.html")))
             options = {"hint": block.hint, "bleed": True, "logoPath": logo_path()}
-            if block.image:
+            if block.frames:
+                options["frames"] = [prefix + copy_asset(p, Path(block.frames).name)
+                                     for p in content.frame_files(block.frames)]
+                if block.match_drawing:
+                    options.update(alignTo=".c-pet__img", alignBox=content.DRAWING_BOX, extendEdges=True,
+                                   over=True, ignore=None, busyWhen=None)
+            elif block.image:
                 options["image"] = prefix + copy_asset(Path(block.image))
             start.append(f'CustomTorchReveal.init("c-pet-head", {json.dumps(options)});')
+        elif isinstance(block, WalkButton):
+            markup = component("custom-features/walk-button.html")
+            markup = markup.replace(">What time should we go on a walk?<", f">{esc(block.text)}<", 1)
+            body.append(once("walk", markup))
+            start.append(f'CustomPetHead.init("c-walk-button", {json.dumps(WALK_OPTIONS)});')
+            if any(isinstance(b, WalkPlanner) for b in page.blocks):
+                # No Python here to run the model: the button opens the planner on the Streamlit site.
+                href = f"{content.STREAMLIT_URL}/{page.path}?walk=1"
+                start.append(f'CustomWalkPlanner.init("c-walk-button", {json.dumps({"href": href})});')
         elif isinstance(block, Waves):
             body.append(once("waves", component("custom-features/wave-field.html")))
             start.append('WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");')

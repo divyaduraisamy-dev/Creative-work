@@ -4,7 +4,8 @@ import streamlit as st
 
 import site_content as content
 import site_effects as fx
-from site_content import Heading, Pet, Photo, Text, Title, Torch, Waves
+import walk_planner
+from site_content import Heading, Pet, Photo, Text, Title, Torch, WalkButton, WalkPlanner, Waves
 
 st.set_page_config(layout="wide")
 
@@ -20,9 +21,14 @@ def render(block) -> None:
     elif isinstance(block, Photo):
         fx.home_photo(image=block.image, alt=block.alt)
     elif isinstance(block, Pet):
-        fx.pet_head(caption=block.caption)
+        fx.pet_head(caption=block.caption, still=block.still)
     elif isinstance(block, Torch):
-        fx.torch_reveal(hint=block.hint, image=block.image)
+        fx.torch_reveal(hint=block.hint, image=block.image, frames=block.frames,
+                        match_drawing=block.match_drawing)
+    elif isinstance(block, WalkButton):
+        fx.walk_button(block.text)
+    elif isinstance(block, WalkPlanner):
+        walk_planner.render()
     elif isinstance(block, Waves):
         fx.wave_field()
 

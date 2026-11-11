@@ -1,0 +1,61 @@
+<!--
+  Component: walk-button
+  Source:    custom (uses the pet-head stretch: CustomPetHead, code written from scratch)
+  Notes:     A pill button you can grab and pull: it stretches toward the pointer like rubber and
+             wobbles back when you let go. Works with a finger too. On release it sends a
+             "pet:release" event with detail.pull (0-1, how far it was pulled) for a future action;
+             for now nothing else happens. Colours follow the page (cream on black / black on cream).
+             Without interactions.js it is a plain button.
+  Hooks:     id="c-walk-button" (CustomPetHead.init("c-walk-button", { maxTilt: 0, ... })),
+             .c-walk__btn (the part that stretches; also .c-pet__rig so the module finds it).
+  Tokens:    color.bg/text, layout.walk-gap
+-->
+<style>
+  .c-walk {
+    --color-bg: #000000;
+    --color-text: #f2ead3;
+    --layout-walk-gap: clamp(24px, 6vh, 64px);
+
+    display: flex;
+    justify-content: center;
+    margin: var(--layout-walk-gap) 0;
+    padding: 0 1rem;
+  }
+
+  :root[data-site-theme="light"] .c-walk { --color-bg: #f2ead3; --color-text: #000000; }
+
+  .c-walk__btn {
+    position: relative;
+    z-index: 5; /* stays on top of the sections below while it is pulled over them */
+    padding: 0.9em 1.6em;
+    border: 2px solid var(--color-text);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: 500 1rem/1.2 "Rubik", sans-serif;
+    letter-spacing: 0.02em;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  .c-walk[data-mood="grab"] .c-walk__btn { cursor: grabbing; }
+
+  .c-walk__btn:hover,
+  .c-walk[data-mood="grab"] .c-walk__btn {
+    background: var(--color-text);
+    color: var(--color-bg);
+  }
+
+  .c-walk__btn:focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 4px;
+  }
+</style>
+
+<div class="c-walk" id="c-walk-button" data-source="custom" data-mood="idle">
+  <button type="button" class="c-walk__btn c-pet__rig">What time should we go on a walk?</button>
+</div>

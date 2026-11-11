@@ -9,15 +9,22 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Text("...")                  a paragraph
     Heading("...", anchor="x")   section heading; anchor="about" is where the About link scrolls
     Photo()                      the edge-to-edge photo (Photo(image="file.jpg", alt="...") for another)
-    Pet(caption="...")           KOVU, grabbable
+    Pet(caption="...")           KOVU, grabbable; Pet(caption="", still=True) for a still drawing
     Torch(hint="...")            hold-and-drag light around KOVU (put it right after Pet)
+                                 frames="folder" plays that folder's pictures (in name order) each press
+    WalkButton("...")            a pill button you can grab and stretch
+    WalkPlanner()                city -> next 12 hours of dog heat risk; opens when WalkButton is pulled
+                                 (Streamlit only; the plain version's button goes to STREAMLIT_URL)
     Waves()                      the wave lines with their credit line
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
+# The Streamlit site (the plain version sends the walk button here, for the walk planner).
+STREAMLIT_URL = "https://heyitskovu.streamlit.app"
 LINKEDIN = "https://www.linkedin.com/in/divya-duraisamy-936b94260/"
 # Your email, stored scrambled so bots reading the code don't see it.
 # Make a new code with: uv run python -c "import site_effects as fx; print(fx.encode_email('you@example.com'))"
@@ -48,18 +55,43 @@ class Photo:
 
 @dataclass
 class Pet:
-    caption: str = "Pull me"
+    caption: str = "Pull me"  # "" for no caption
+    still: bool = False       # True: the drawing stays put (no grab, stretch or tilt)
 
 
 @dataclass
 class Torch:
     hint: str | None = "Hold and drag around KOVU"
     image: str | None = None  # file path; None = a pattern made from your logo
+    frames: str | None = None  # folder of pictures played in name order on each press (wins over image)
+    match_drawing: bool = True  # line the pictures up under KOVU's drawing (see DRAWING_BOX)
+
+
+@dataclass
+class WalkButton:
+    text: str = "What time should we go on a walk?"
+
+
+@dataclass
+class WalkPlanner:
+    pass
 
 
 @dataclass
 class Waves:
     pass
+
+
+# Where KOVU's drawing (kovu-placeholder.png, the whole image) sits on your paintings, as shares of
+# the painting's width and height: [left, top, right, bottom]. Measured from kovujustline.png, the
+# line layer of the same canvas (4828 x 6250), so the drawing's lines land on the painted dog.
+DRAWING_BOX = [0.007724, 0.047027, 0.959611, 0.793613]
+
+
+def frame_files(folder: str | Path) -> list[Path]:
+    """The pictures in a folder, in name order (frame-04, frame-05, ...)."""
+    kinds = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+    return sorted(p for p in Path(folder).iterdir() if p.suffix.lower() in kinds)
 
 
 @dataclass
@@ -88,8 +120,10 @@ PAGES = {
     ]),
     "kovu": Page("KOVU", "kovu", [
         Title("KOVU"),
-        Pet(caption="Stretch"),
-        Torch(),
+        Pet(caption="", still=True),
+        Torch(frames="ui-scrapbook/custom-features/assets/kovu-reveal"),
+        WalkButton(),
+        WalkPlanner(),
         Waves(),
     ]),
 }
