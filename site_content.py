@@ -110,7 +110,7 @@ PAGES = {
         Heading("I look forward to engaging your mind"),
         Text("Take your time to work through the page and learn more about me."),
         Heading("About", anchor="about"),
-        Text("Placeholder: a few sentences about you."),
+        Text("I combine my knowledge of public health and data science to create human centered projects. I want people to regain autonomy over their health. The tools I build turn analysis into something they can actually use. All of my projects have been built to solve problems I have run into personally or noticed while speaking with others through my work. My goal is to improve health equity for all. I also take photos, doodle and write my thoughts, and go hiking with my dog, Kovu, who has inspired some of my projects."),
         Waves(),
     ]),
     "work": Page("Work", "work", [
