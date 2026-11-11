@@ -119,7 +119,7 @@ PAGES = {
         Waves(),
     ]),
     "kovu": Page("KOVU", "kovu", [
-        Title("KOVU"),
+        Title("projects inspired by my dog kovu"),
         Pet(caption="", still=True),
         Torch(frames="ui-scrapbook/custom-features/assets/kovu-reveal"),
         WalkButton(),
