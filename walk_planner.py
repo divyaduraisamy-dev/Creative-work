@@ -145,7 +145,7 @@ def render() -> None:
         st.subheader("Is it too hot for a walk?")
         st.write("Enter your city to see a dog's heat risk for the next 12 hours. Each hour shows the risk "
                  "at 15, 30 and 60 minutes after finishing about 15 minutes of hard exercise.")
-        city = st.text_input("Your city", placeholder="Syracuse, NY", key="walk-city")
+        city = st.text_input("Your city", placeholder="Enter city here", key="walk-city")
         c1, c2, c3 = st.columns([2, 1, 1])
         weight_unit = c2.radio("Weight in", ["kg", "lb"], horizontal=True, key="walk-weight-unit")
         if weight_unit == "lb":
