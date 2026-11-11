@@ -1,0 +1,221 @@
+<!--
+  Component: walk-forecast
+  Source:    custom (code written from scratch; the model is from Divya's IST707 project)
+  Notes:     The walk planner that runs in the page, for the plain web version (no Python):
+             city in, next 12 hours of dog heat risk out. CustomWalkForecast (interactions.js)
+             finds the place and the hourly forecast with Open-Meteo, then looks each hour up in
+             walk-table.json, the heat model precomputed by build_walk_table.py. Same wording,
+             defaults (30 kg / 66.1 lb dog) and key as the Streamlit planner (walk_planner.py).
+             Hidden until the walk button opens it (<html data-walk-open>, CustomWalkPlanner).
+             The key's temperatures are written in °F; data-temp-c holds the °C value the
+             script switches to. Without interactions.js only the text shows.
+  Hooks:     id="c-walk-forecast" (CustomWalkForecast.init("c-walk-forecast", { table: "..." })),
+             [data-walk-form], [data-walk-city], [data-walk-weight], [data-walk-weight-unit],
+             [data-walk-unit], [data-walk-pick], [data-walk-place], [data-walk-status],
+             [data-walk-results], [data-walk-answer], [data-walk-rows], [data-walk-key],
+             [data-walk-forecast-for], [data-walk-edge], [data-temp-c]
+  Tokens:    color.bg/text, risk.low/moderate/high
+-->
+<style>
+  .c-walkfc {
+    --color-bg: #000000;
+    --color-text: #f2ead3;
+    --risk-low: #515425;
+    --risk-moderate: #bf7362;
+    --risk-high: #af3f27;
+
+    scroll-margin-top: 1rem;
+    color: var(--color-text);
+    font-family: "Rubik", sans-serif;
+  }
+
+  :root[data-site-theme="light"] .c-walkfc { --color-bg: #f2ead3; --color-text: #000000; }
+  :root:not([data-walk-open]) .c-walkfc { display: none; }
+
+  .c-walkfc > * + * { margin-top: 1rem; }
+  .c-walkfc__title { margin: 0; }
+  .c-walkfc p { margin: 0; }
+
+  .c-walkfc__form { display: grid; gap: 1rem; }
+  .c-walkfc__row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; align-items: end; }
+  .c-walkfc__search { display: flex; gap: 0.5rem; }
+  .c-walkfc__search input { flex: 1; min-width: 0; }
+
+  .c-walkfc label,
+  .c-walkfc legend { display: block; margin: 0 0 0.35rem; padding: 0; font-size: 0.875rem; }
+  .c-walkfc fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+
+  .c-walkfc input[type="text"],
+  .c-walkfc input[type="number"],
+  .c-walkfc select {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--color-text) 8%, var(--color-bg));
+    color: var(--color-text);
+    font: inherit;
+  }
+
+  .c-walkfc input:focus-visible,
+  .c-walkfc select:focus-visible,
+  .c-walkfc button:focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
+  }
+
+  .c-walkfc__go {
+    padding: 0.55rem 1.1rem;
+    border: 1px solid var(--color-text);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .c-walkfc__go:hover { background: var(--color-text); color: var(--color-bg); }
+
+  .c-walkfc__choices { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.5rem 0; }
+  .c-walkfc__choices label { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; font-size: 1rem; cursor: pointer; }
+  .c-walkfc__choices input { accent-color: var(--risk-moderate); margin: 0; }
+
+  .c-walkfc__status { font-size: 0.95rem; }
+  .c-walkfc__status[data-kind="error"] { padding: 0.75rem 1rem; border-radius: 0.5rem; background: color-mix(in srgb, var(--risk-high) 30%, transparent); }
+  .c-walkfc__status[data-kind="warning"] { padding: 0.75rem 1rem; border-radius: 0.5rem; background: color-mix(in srgb, var(--risk-moderate) 25%, transparent); }
+  .c-walkfc__status:empty { display: none; }
+
+  .c-walkfc__answer { font: 400 1.6rem/1.25 "Londrina Solid", sans-serif; margin: 0 0 0.75rem; }
+  .c-walkfc__scroll { overflow-x: auto; }
+  .c-walkfc table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+  .c-walkfc th, .c-walkfc td {
+    padding: 0.45rem 0.6rem;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  }
+  .c-walkfc thead th { font-weight: 500; font-size: 0.8rem; letter-spacing: 0.04em; opacity: 0.7; }
+
+  .c-walkfc__pill {
+    display: inline-block;
+    min-width: 5.5em;
+    padding: 0.15em 0.7em;
+    border-radius: 999px;
+    background: var(--risk);
+    color: #f2ead3;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+  .c-walkfc__pill[data-risk="Low"] { --risk: var(--risk-low); }
+  .c-walkfc__pill[data-risk="Moderate"] { --risk: var(--risk-moderate); }
+  .c-walkfc__pill[data-risk="High"] { --risk: var(--risk-high); }
+
+  .c-walkfc__key { margin-top: 1.25rem; font-size: 0.9rem; line-height: 1.5; }
+  .c-walkfc__keytitle { font-weight: 500; margin: 0 0 0.5rem; }
+  .c-walkfc__key ul { list-style: none; margin: 0 0 0.75rem; padding: 0; display: grid; gap: 0.6rem; }
+  .c-walkfc__key li { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; align-items: start; }
+  .c-walkfc__key strong { font-weight: 500; }
+  .c-walkfc__key p { opacity: 0.85; }
+  .c-walkfc__key .c-walkfc__caution {
+    margin-top: 0.6rem;
+    opacity: 1;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--risk-high);
+  }
+
+  .c-walkfc__caption { font-size: 0.875rem; opacity: 0.7; }
+  .c-walkfc__caption a { color: inherit; }
+
+  @media (max-width: 640px) {
+    .c-walkfc__row { grid-template-columns: 1fr 1fr; }
+    .c-walkfc__row > :first-child { grid-column: 1 / -1; }
+    .c-walkfc__answer { font-size: 1.35rem; }
+  }
+</style>
+
+<section class="c-walkfc" id="c-walk-forecast" data-source="custom" aria-labelledby="c-walk-forecast-title">
+  <h2 class="c-walkfc__title" id="c-walk-forecast-title">Is it too hot for a walk?</h2>
+  <p>Enter your city to see a dog's heat risk for the next 12 hours. Each hour shows the risk at 15,
+    30 and 60 minutes after finishing about 15 minutes of hard exercise.</p>
+
+  <form class="c-walkfc__form" data-walk-form>
+    <div>
+      <label for="c-walk-city">Your city</label>
+      <div class="c-walkfc__search">
+        <input type="text" id="c-walk-city" placeholder="Syracuse, NY" autocomplete="address-level2"
+               enterkeyhint="search" data-walk-city>
+        <button type="submit" class="c-walkfc__go">Check</button>
+      </div>
+    </div>
+    <div class="c-walkfc__row">
+      <div>
+        <label for="c-walk-weight" data-walk-weight-label>Your dog's weight (kg)</label>
+        <input type="number" id="c-walk-weight" min="2" max="90" step="0.5" value="30" inputmode="decimal"
+               data-walk-weight>
+      </div>
+      <fieldset>
+        <legend>Weight in</legend>
+        <div class="c-walkfc__choices">
+          <label><input type="radio" name="c-walk-weight-unit" value="kg" checked data-walk-weight-unit> kg</label>
+          <label><input type="radio" name="c-walk-weight-unit" value="lb" data-walk-weight-unit> lb</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Temperature</legend>
+        <div class="c-walkfc__choices">
+          <label><input type="radio" name="c-walk-unit" value="F" checked data-walk-unit> °F</label>
+          <label><input type="radio" name="c-walk-unit" value="C" data-walk-unit> °C</label>
+        </div>
+      </fieldset>
+    </div>
+    <div data-walk-pick hidden>
+      <label for="c-walk-place">Which one?</label>
+      <select id="c-walk-place" data-walk-place></select>
+    </div>
+  </form>
+
+  <p class="c-walkfc__status" role="status" aria-live="polite" data-walk-status></p>
+
+  <div data-walk-results hidden>
+    <p class="c-walkfc__answer" data-walk-answer></p>
+    <div class="c-walkfc__scroll">
+      <table>
+        <thead><tr><th scope="col">Hour (local time)</th><th scope="col">Temp</th><th scope="col">Humidity</th>
+          <th scope="col">15 min after</th><th scope="col">30 min after</th><th scope="col">60 min after</th></tr></thead>
+        <tbody data-walk-rows></tbody>
+      </table>
+    </div>
+
+    <div class="c-walkfc__key" data-walk-key>
+      <p class="c-walkfc__keytitle">How to read this</p>
+      <ul>
+        <li><span class="c-walkfc__pill" data-risk="Low">Low</span>
+          <span><strong>Predicted core temperature below <span data-temp-c="38.7">101.7°F</span>.</strong>
+          Your dog should cool down normally. Fine for a walk with the usual water and breaks.</span></li>
+        <li><span class="c-walkfc__pill" data-risk="Moderate">Moderate</span>
+          <span><strong>Predicted core temperature <span data-temp-c="38.7">101.7°F</span> – <span data-temp-c="40.1">104.2°F</span>.</strong>
+          Your dog stays warm for longer after exercise. Keep it shorter and slower, stick to shade,
+          bring water and watch for heavy panting.</span></li>
+        <li><span class="c-walkfc__pill" data-risk="High">High</span>
+          <span><strong>Predicted core temperature above <span data-temp-c="40.1">104.2°F</span>.</strong>
+          Heat stress is likely. Skip the walk or keep it to a quick, shaded potty break.</span></li>
+      </ul>
+      <p>Each column shows how warm your dog is likely to be 15, 30 and 60 minutes after about
+        15 minutes of hard exercise. Longer exercise can warm your dog more. Dogs are always warm right
+        after exercise, so Moderate at 15 minutes is common. What matters most is whether it drops to
+        Low by 60 minutes; the best times above use the 60-minute column.</p>
+      <p class="c-walkfc__caution"><strong>Use caution if you see High in the 15 or 30 minute
+        column.</strong> It means that after 15 or 30 minutes of recovery, your dog is experiencing
+        heat stress.</p>
+    </div>
+  </div>
+
+  <p class="c-walkfc__caption">
+    <span data-walk-forecast-for></span>
+    <span data-walk-edge></span>
+    Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>.
+    Guidance only, not veterinary advice. The model is from my IST707 project: it learned from a
+    small study of working dogs in three months of the year, and doesn't know your dog's coat,
+    hydration, shade or pavement temperature. When in doubt, go shorter and bring water.
+  </p>
+</section>

@@ -14,6 +14,7 @@ Each row is one dog and one training activity in October, March or August: weigh
 temperature and humidity, core temperature (Tc) at the end of exercise and 5 to 60 minutes into
 recovery, and the Canine Thermal Model (CTM) values. Dogs are anonymous ("OCT Dog 1", ...).
 
-Used by `heat_model.py` to train the walk planner on the KOVU page (from my IST707 final project).
+Used by `heat_model.py` to train the walk planner on the KOVU page (from my IST707 final project),
+and by `build_walk_table.py` to precompute it for the plain web version.
 For education and general guidance only, not veterinary advice. Please cite the studies above if
 you use these numbers.

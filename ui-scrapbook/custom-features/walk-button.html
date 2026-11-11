@@ -3,8 +3,8 @@
   Source:    custom (uses the pet-head stretch: CustomPetHead, code written from scratch)
   Notes:     A pill button you can grab and pull: it stretches toward the pointer like rubber and
              wobbles back when you let go. Works with a finger too. On release it sends a
-             "pet:release" event with detail.pull (0-1, how far it was pulled) for a future action;
-             for now nothing else happens. Colours follow the page (cream on black / black on cream).
+             "pet:release" event with detail.pull (0-1, how far it was pulled); CustomWalkPlanner
+             uses it (and clicks) to open the walk planner. Colours follow the page (cream on black / black on cream).
              Without interactions.js it is a plain button.
   Hooks:     id="c-walk-button" (CustomPetHead.init("c-walk-button", { maxTilt: 0, ... })),
              .c-walk__btn (the part that stretches; also .c-pet__rig so the module finds it).

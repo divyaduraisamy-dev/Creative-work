@@ -195,9 +195,14 @@ def render_page(name: str, page: Page) -> str:
             body.append(once("walk", markup))
             start.append(f'CustomPetHead.init("c-walk-button", {json.dumps(WALK_OPTIONS)});')
             if any(isinstance(b, WalkPlanner) for b in page.blocks):
-                # No Python here to run the model: the button opens the planner on the Streamlit site.
-                href = f"{content.STREAMLIT_URL}/{page.path}?walk=1"
-                start.append(f'CustomWalkPlanner.init("c-walk-button", {json.dumps({"href": href})});')
+                # Pulling the button opens the in-page planner below (walk-forecast.html).
+                start.append('CustomWalkPlanner.init("c-walk-button", {"panel": "#c-walk-forecast"});')
+        elif isinstance(block, WalkPlanner):
+            # No Python here: the planner runs in the page from the precomputed model
+            # (build_walk_table.py -> walk-table.json). The Streamlit site keeps walk_planner.py.
+            table = prefix + copy_asset(CUSTOM / "assets" / "walk-table.json")
+            body.append(once("walk-forecast", component("custom-features/walk-forecast.html")))
+            start.append(f'CustomWalkForecast.init("c-walk-forecast", {json.dumps({"table": table})});')
         elif isinstance(block, Waves):
             body.append(once("waves", component("custom-features/wave-field.html")))
             start.append('WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");')

@@ -10,6 +10,7 @@
  *     CustomSiteHeader.init("c-site-header");    // header (also starts CustomSiteTheme)
  *     CustomTorchReveal.init("c-pet-head");      // hold-and-drag light that shows a hidden picture
  *     CustomWalkPlanner.init("c-walk-button");   // pulling the walk button opens the walk planner
+ *     CustomWalkForecast.init("c-walk-forecast"); // the in-page walk planner (plain web version)
  *   init() accepts an element id or an element and is safe to call twice.
  *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
  *
@@ -1427,6 +1428,341 @@ const CustomWalkPlanner = {
   },
 };
 
+/* Walk forecast ------------------------------------------------------------------------------------
+ * The walk planner that runs in the page (plain web version, walk-forecast.html): city in, next 12
+ * hours of dog heat risk out, the same as the Streamlit planner (walk_planner.py).
+ *   1. Open-Meteo geocoding finds the place ("City" or "City, State/Country"; US state
+ *      abbreviations work). Several matches: a "Which one?" list, first one shown.
+ *   2. Open-Meteo gives the next 12 hours of temperature and humidity in the place's local time.
+ *   3. Each hour is looked up in options.table (walk-table.json from build_walk_table.py: the
+ *      heat model precomputed over temperature x humidity x dog weight x season), blending the 8
+ *      nearest grid points. Past the table's edges the nearest edge is used, which is what the
+ *      model itself does there (it was only trained inside those ranges); the caption says so.
+ *   4. Risk per recovery time: Low below moderateAt, Moderate up to highAbove, High above.
+ *      "Best times" are runs of Low in the 60-minute column.
+ * The table is fetched the first time someone searches. Forecasts are kept for 15 minutes.
+ */
+const CustomWalkForecast = {
+  options: {
+    table: "assets/walk-table.json",
+    geocodeUrl: "https://geocoding-api.open-meteo.com/v1/search",
+    forecastUrl: "https://api.open-meteo.com/v1/forecast",
+    hours: 12,
+    weatherTtlMs: 15 * 60 * 1000,
+    headline: 2,  // which recovery time decides "best times": 0 = 15, 1 = 30, 2 = 60 minutes
+  },
+  units: {
+    kg: { label: "Your dog's weight (kg)", min: 2, max: 90, step: 0.5, value: 30 },
+    lb: { label: "Your dog's weight (lb)", min: 4, max: 200, step: 1, value: 66.1 },
+  },
+  LB_PER_KG: 2.20462,
+  US_STATES: {
+    AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado",
+    CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho",
+    IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
+    ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+    MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada",
+    NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina",
+    ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania",
+    RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+    UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia",
+    WI: "Wisconsin", WY: "Wyoming", DC: "District of Columbia",
+  },
+
+  init(target = "c-walk-forecast", options = {}) {
+    const root = CustomEnv.resolve(target);
+    if (!CustomEnv.claim(root)) return;
+    const q = (name) => root.querySelector(`[data-walk-${name}]`);
+    const w = {
+      root,
+      opts: { ...this.options, ...options },
+      form: q("form"), city: q("city"), weight: q("weight"), weightLabel: q("weight-label"),
+      pick: q("pick"), place: q("place"), status: q("status"), results: q("results"),
+      answer: q("answer"), rows: q("rows"), forecastFor: q("forecast-for"), edge: q("edge"),
+      weightUnit: "kg", tempUnit: "F",
+      remembered: { kg: this.units.kg.value, lb: this.units.lb.value },
+      table: null, places: [], weather: null, query: "", run: 0, cache: new Map(),
+    };
+    this.instance = w;
+
+    w.form.addEventListener("submit", (e) => { e.preventDefault(); this.search(w, true); });
+    w.city.addEventListener("change", () => this.search(w));
+    w.place.addEventListener("change", () => this.showPlace(w, Number(w.place.value)));
+    w.weight.addEventListener("input", () => this.render(w));
+    root.querySelectorAll("[data-walk-weight-unit]").forEach((r) =>
+      r.addEventListener("change", () => r.checked && this.setWeightUnit(w, r.value)));
+    root.querySelectorAll("[data-walk-unit]").forEach((r) =>
+      r.addEventListener("change", () => { if (r.checked) { w.tempUnit = r.value; this.render(w); } }));
+    this.setWeightUnit(w, "kg");
+  },
+
+  /* Inputs ---------------------------------------------------------------------------------------- */
+  setWeightUnit(w, unit) {
+    const value = parseFloat(w.weight.value);
+    if (Number.isFinite(value)) w.remembered[w.weightUnit] = value;
+    // Like the Streamlit planner, each unit keeps its own value (starting at the 30 kg example dog).
+    const u = this.units[unit];
+    w.weightUnit = unit;
+    w.weightLabel.textContent = u.label;
+    Object.assign(w.weight, { min: u.min, max: u.max, step: u.step });
+    w.weight.value = w.remembered[unit];
+    this.render(w);
+  },
+
+  weightKg(w) {
+    const u = this.units[w.weightUnit];
+    let value = parseFloat(w.weight.value);
+    if (!Number.isFinite(value)) value = u.value;
+    value = Math.min(u.max, Math.max(u.min, value));
+    return w.weightUnit === "lb" ? value / this.LB_PER_KG : value;
+  },
+
+  setStatus(w, text = "", kind = "") {
+    w.status.textContent = text;
+    w.status.dataset.kind = kind;
+  },
+
+  /* Place search ---------------------------------------------------------------------------------- */
+  async search(w, force = false) {
+    const query = w.city.value.trim();
+    if (!force && query === w.query) return;
+    w.query = query;
+    const run = ++w.run;
+    if (!query) {
+      w.places = []; w.weather = null; w.pick.hidden = true;
+      this.setStatus(w);
+      return this.render(w);
+    }
+    this.setStatus(w, "Looking up the forecast…");
+    this.loadTable(w).catch(() => {});  // start fetching the model while the place is found
+    let places;
+    try {
+      places = await this.findPlaces(w, query);
+    } catch (e) {
+      if (run === w.run) this.fail(w, "Couldn't reach the place search just now. Try again in a minute.");
+      return;
+    }
+    if (run !== w.run) return;
+    w.places = places;
+    if (!places.length) {
+      w.weather = null; w.pick.hidden = true; this.render(w);
+      return this.setStatus(w, `No place called “${query}” found. Try just the city name, or add the state or country.`, "warning");
+    }
+    w.place.replaceChildren(...places.map((p, i) => new Option(this.placeLabel(p), String(i))));
+    w.pick.hidden = places.length < 2;
+    this.showPlace(w, 0, run);
+  },
+
+  async findPlaces(w, query) {
+    const parts = query.split(",").map((p) => p.trim()).filter(Boolean);
+    if (!parts.length) return [];
+    const url = new URL(w.opts.geocodeUrl);
+    url.search = new URLSearchParams({ name: parts[0], count: 8, language: "en", format: "json" });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`geocoding ${res.status}`);
+    let places = (await res.json()).results || [];
+    if (parts.length > 1) {
+      const want = parts.slice(1).join(" ").toLowerCase();
+      const wantFull = (this.US_STATES[want.toUpperCase()] || want).toLowerCase();
+      const filtered = places.filter((p) => [p.admin1, p.country, p.country_code]
+        .some((f) => f && (f.toLowerCase().includes(wantFull) || f.toLowerCase() === want)));
+      if (filtered.length) places = filtered;
+    }
+    return places;
+  },
+
+  placeLabel(p) {
+    return [p.name, p.admin1, p.country].filter(Boolean).join(", ");
+  },
+
+  /* Forecast -------------------------------------------------------------------------------------- */
+  async showPlace(w, index, run = ++w.run) {
+    const place = w.places[index];
+    if (!place) return;
+    this.setStatus(w, "Looking up the forecast…");
+    let weather, table;
+    try {
+      [weather, table] = await Promise.all([this.hourlyWeather(w, place), this.loadTable(w)]);
+    } catch (e) {
+      if (run === w.run) this.fail(w, e.message === "table"
+        ? "Couldn't load the dog heat model just now. Try reloading the page."
+        : "Couldn't get the weather forecast just now. Try again in a minute.");
+      return;
+    }
+    if (run !== w.run) return;
+    w.weather = { ...weather, label: this.placeLabel(place) };
+    this.setStatus(w);
+    this.render(w);
+  },
+
+  async hourlyWeather(w, place) {
+    const key = `${place.latitude},${place.longitude}`;
+    const hit = w.cache.get(key);
+    if (hit && performance.now() - hit.at < w.opts.weatherTtlMs) return hit.data;
+    const url = new URL(w.opts.forecastUrl);
+    url.search = new URLSearchParams({
+      latitude: place.latitude, longitude: place.longitude,
+      hourly: "temperature_2m,relative_humidity_2m",
+      forecast_hours: w.opts.hours, timezone: "auto",
+    });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`forecast ${res.status}`);
+    const h = (await res.json()).hourly;
+    // Times come back as local wall-clock strings ("2026-11-10T19:00"), so no time zone maths.
+    const data = {
+      hours: h.time.map((t, i) => ({
+        month: Number(t.slice(5, 7)), hour: Number(t.slice(11, 13)),
+        tempC: h.temperature_2m[i], rh: h.relative_humidity_2m[i],
+      })).filter((x) => x.tempC != null && x.rh != null),
+    };
+    w.cache.set(key, { at: performance.now(), data });
+    return data;
+  },
+
+  loadTable(w) {
+    if (!w.tablePromise) {
+      w.tablePromise = fetch(w.opts.table)
+        .then((res) => { if (!res.ok) throw new Error("table"); return res.json(); })
+        .then((t) => {
+          t.values = t.values.map((v) => Int16Array.from(v));
+          w.table = t;
+          return t;
+        })
+        .catch(() => { w.tablePromise = null; throw new Error("table"); });
+    }
+    return w.tablePromise;
+  },
+
+  // Core temperatures [15, 30, 60 min] for one hour: clamped trilinear blend of the grid
+  // (the same sum build_walk_table.lookup checks against the model).
+  lookup(t, season, tempC, rh, weightKg) {
+    const axes = [t.temp, t.rh, t.weight];
+    const idx = [], frac = [];
+    [tempC, rh, weightKg].forEach((x, a) => {
+      const g = axes[a];
+      const v = Math.min(g[g.length - 1], Math.max(g[0], x));
+      let i = 0;
+      while (i < g.length - 2 && g[i + 1] <= v) i++;
+      idx.push(i);
+      frac.push((v - g[i]) / (g[i + 1] - g[i]));
+    });
+    const nR = t.rh.length, nW = t.weight.length;
+    const vals = t.values[t.seasons.indexOf(season)];
+    const out = [0, 0, 0];
+    for (let dt = 0; dt < 2; dt++) for (let dr = 0; dr < 2; dr++) for (let dw = 0; dw < 2; dw++) {
+      const k = (dt ? frac[0] : 1 - frac[0]) * (dr ? frac[1] : 1 - frac[1]) * (dw ? frac[2] : 1 - frac[2]);
+      if (!k) continue;
+      const cell = (((idx[0] + dt) * nR + idx[1] + dr) * nW + idx[2] + dw) * 3;
+      for (let j = 0; j < 3; j++) out[j] += k * vals[cell + j];
+    }
+    return out.map((v) => v / 100);
+  },
+
+  risk(t, tc) {
+    if (tc < t.moderate_at) return "Low";
+    if (tc <= t.high_above) return "Moderate";
+    return "High";
+  },
+
+  /* Output ---------------------------------------------------------------------------------------- */
+  temp(c, unit, digits = 0) {
+    return unit === "F" ? `${(c * 9 / 5 + 32).toFixed(digits)}°F` : `${c.toFixed(digits)}°C`;
+  },
+
+  hourLabel(h) {
+    return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
+  },
+
+  // Runs of consecutive hours at `level`, as "7 PM – 10 PM" (end = the hour after the run).
+  windows(rows, col, level) {
+    const spans = [];
+    let start = null;
+    rows.forEach((r, i) => {
+      if (r.risks[col] === level && start === null) start = r.hour;
+      if (r.risks[col] !== level && start !== null) { spans.push([start, r.hour]); start = null; }
+    });
+    if (start !== null) spans.push([start, (rows[rows.length - 1].hour + 1) % 24]);
+    return spans.map(([a, b]) => `${this.hourLabel(a)} – ${this.hourLabel(b)}`);
+  },
+
+  render(w) {
+    const unit = w.tempUnit;
+    w.root.querySelectorAll("[data-temp-c]").forEach((el) => {
+      el.textContent = this.temp(parseFloat(el.dataset.tempC), unit, 1);
+    });
+    const t = w.table;
+    if (!w.weather || !t || !w.weather.hours.length) {
+      w.results.hidden = true;
+      w.forecastFor.textContent = w.edge.textContent = "";
+      return;
+    }
+    const kg = this.weightKg(w);
+    const rows = w.weather.hours.map((h) => {
+      const tc = this.lookup(t, t.month_season[h.month], h.tempC, h.rh, kg);
+      return { ...h, risks: tc.map((v) => this.risk(t, v)) };
+    });
+
+    const col = w.opts.headline;
+    const lows = this.windows(rows, col, "Low");
+    let answer;
+    if (lows.length) answer = `Best times for a walk: ${lows.join(", ")}`;
+    else {
+      const mods = this.windows(rows, col, "Moderate");
+      answer = mods.length
+        ? `No low-risk hours in the next 12. Lower risk: ${mods.join(", ")}`
+        : "High heat risk for the next 12 hours. Keep walks short and shaded, or skip.";
+    }
+    w.answer.textContent = answer;
+
+    const cell = (text) => Object.assign(document.createElement("td"), { textContent: text });
+    const pill = (risk) => {
+      const td = document.createElement("td");
+      td.appendChild(Object.assign(document.createElement("span"),
+        { className: "c-walkfc__pill", textContent: risk })).dataset.risk = risk;
+      return td;
+    };
+    w.rows.replaceChildren(...rows.map((r) => {
+      const tr = document.createElement("tr");
+      const th = Object.assign(document.createElement("th"), { scope: "row", textContent: this.hourLabel(r.hour) });
+      tr.append(th, cell(this.temp(r.tempC, unit)), cell(`${Math.round(r.rh)}%`), ...r.risks.map(pill));
+      return tr;
+    }));
+
+    w.forecastFor.textContent = `Forecast for ${w.weather.label}. Hours are shown in local time there.`;
+    w.edge.textContent = this.edgeNote(w, rows, kg);
+    w.results.hidden = false;
+  },
+
+  // Says when an hour or the dog is outside what the model learned from (it then uses the
+  // nearest values it knows, the same answer the model itself gives there).
+  edgeNote(w, rows, kg) {
+    const t = w.table;
+    const first = (a) => a[0], last = (a) => a[a.length - 1];
+    const parts = [];
+    if (rows.some((r) => r.tempC < first(t.temp) || r.tempC > last(t.temp))) {
+      parts.push(`air temperatures of ${this.temp(first(t.temp), w.tempUnit)} – ${this.temp(last(t.temp), w.tempUnit)}`);
+    }
+    if (rows.some((r) => r.rh < first(t.rh) || r.rh > last(t.rh))) {
+      parts.push(`humidity of ${first(t.rh)}% – ${last(t.rh)}%`);
+    }
+    if (kg < first(t.weight) || kg > last(t.weight)) {
+      const [a, b] = [first(t.weight), last(t.weight)];
+      parts.push(w.weightUnit === "lb"
+        ? `dogs of ${Math.round(a * this.LB_PER_KG)} – ${Math.round(b * this.LB_PER_KG)} lb`
+        : `dogs of ${a} – ${b} kg`);
+    }
+    if (!parts.length) return "";
+    const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+    return `The model learned from ${list}; outside that it uses the closest values it knows.`;
+  },
+
+  fail(w, text) {
+    w.weather = null;
+    this.render(w);
+    this.setStatus(w, text, "error");
+  },
+};
+
 /* Page transition ---------------------------------------------------------------------------------
  * Your logo takes over the screen while the next page loads:
  *   1. the page frosts over (a blurred, lightly tinted glass layer fades in) while a copy of the
@@ -1684,3 +2020,4 @@ window.CustomSiteHeader = CustomSiteHeader;
 window.CustomTorchReveal = CustomTorchReveal;
 window.CustomPageTransition = CustomPageTransition;
 window.CustomWalkPlanner = CustomWalkPlanner;
+window.CustomWalkForecast = CustomWalkForecast;
