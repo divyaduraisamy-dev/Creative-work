@@ -32,6 +32,33 @@ CUSTOM = SCRAPBOOK / "custom-features"
 OUT = ROOT / "docs"
 # The custom domain GitHub Pages serves docs/ at (written to docs/CNAME on every build).
 CUSTOM_DOMAIN = "divyaduraisamy.org"
+# Search engines: the domain version puts the owner's name in each tab title.
+# The Streamlit site keeps the plain titles from site_content.py.
+OWNER_NAME = "Divya Duraisamy"
+SITE_URL = f"https://{CUSTOM_DOMAIN}/"
+# The short summary search engines show under the link (never shown on the page), by page path.
+DESCRIPTIONS = {
+    "": "Divya Duraisamy combines public health and data science to build human centered projects "
+        "that help people regain autonomy over their health.",
+    "work": "Divya Duraisamy's work on health equity, and how that perspective changes over time.",
+    "kovu": "Projects inspired by Divya Duraisamy's dog, Kovu, including a tool that checks whether "
+            "it's too hot to take a dog for a walk.",
+}
+
+
+def page_url(page: Page) -> str:
+    return SITE_URL + (page.path + "/" if page.path else "")
+
+
+def search_tags(page: Page) -> str:
+    """Head tags only search engines read: summary, main address, and (home) who the site belongs to."""
+    tags = [f'<meta name="description" content="{esc(DESCRIPTIONS[page.path])}">',
+            f'<link rel="canonical" href="{page_url(page)}">']
+    if page.path == "":
+        person = {"@context": "https://schema.org", "@type": "Person", "name": OWNER_NAME,
+                  "url": SITE_URL, "description": DESCRIPTIONS[""], "sameAs": [content.LINKEDIN]}
+        tags.append(f'<script type="application/ld+json">{json.dumps(person)}</script>')
+    return "\n".join(tags)
 # Stretch settings for the walk button (same as site_effects.WALK_OPTIONS).
 WALK_OPTIONS = {"maxTilt": 0, "hoverScale": 1.03, "maxPull": 110, "maxStretch": 0.3}
 GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"
@@ -230,7 +257,8 @@ def render_page(name: str, page: Page) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(page.title)}</title>
+<title>{esc(OWNER_NAME if page.path == "" else f"{page.title} · {OWNER_NAME}")}</title>
+{search_tags(page)}
 <link rel="icon" href="{prefix}assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -269,6 +297,13 @@ def main() -> None:
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
     (OUT / "CNAME").write_text(CUSTOM_DOMAIN, encoding="utf-8")
+    # Search engines: the list of pages, and permission to read them all.
+    urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in content.PAGES.values())
+    (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
+                                     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                                     f"{urls}</urlset>\n", encoding="utf-8")
+    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}sitemap.xml\n",
+                                    encoding="utf-8")
 
 
 if __name__ == "__main__":
