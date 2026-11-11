@@ -263,7 +263,7 @@ def main() -> None:
     # GitHub Pages: serve the files as they are (no Jekyll processing).
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
-    (OUT / "CNAME").write_text(CUSTOM_DOMAIN + "\n", encoding="utf-8")
+    (OUT / "CNAME").write_text(CUSTOM_DOMAIN, encoding="utf-8")
 
 
 if __name__ == "__main__":

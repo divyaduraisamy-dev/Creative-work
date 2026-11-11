@@ -128,7 +128,7 @@
     --color-fg: #f2ead3;
     --layout-header-height: 96px;
     --layout-icon-cell: 88px;
-    --layout-logo-height: 56%;
+    --layout-logo-height: calc(var(--layout-header-height) * 0.56);
     --border-hairline: 1px;
     --text-link: 15px;
     --space-menu-gap: clamp(24px, 6vw, 88px);
@@ -224,8 +224,11 @@
 
   .c-site-header__logo svg {
     display: block;
+    /* A set width as well as height: iOS Safari gives a % height / auto width SVG no width,
+       so the cell shrank to its padding and the divider line ran through the logo. */
     height: var(--layout-logo-height);
-    width: auto;
+    width: calc(var(--layout-logo-height) * 1037 / 1157);
+    flex: none;
     overflow: visible;
   }
 
