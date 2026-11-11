@@ -30,6 +30,8 @@ ROOT = Path(__file__).resolve().parent
 SCRAPBOOK = ROOT / "ui-scrapbook"
 CUSTOM = SCRAPBOOK / "custom-features"
 OUT = ROOT / "docs"
+# The custom domain GitHub Pages serves docs/ at (written to docs/CNAME on every build).
+CUSTOM_DOMAIN = "divyaduraisamy.org"
 # Stretch settings for the walk button (same as site_effects.WALK_OPTIONS).
 WALK_OPTIONS = {"maxTilt": 0, "hoverScale": 1.03, "maxPull": 110, "maxStretch": 0.3}
 GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"
@@ -260,6 +262,8 @@ def main() -> None:
         print(f"wrote {(folder / 'index.html').relative_to(ROOT)}")
     # GitHub Pages: serve the files as they are (no Jekyll processing).
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
+    # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
+    (OUT / "CNAME").write_text(CUSTOM_DOMAIN + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
