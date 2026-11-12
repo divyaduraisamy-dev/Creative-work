@@ -111,6 +111,15 @@
   .s-gallery__date { opacity: 0.7; }
   .s-gallery__note { margin-top: 0.25rem; }
 
+  /* Project: a link to something built, with a line about it. */
+  .s-project { padding-top: 1.5rem; }
+  .s-project__title { margin-bottom: 0.25rem; }
+  .s-project__title a { color: inherit; text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-project__arrow { display: inline-block; transition: transform 0.25s ease; }
+  .s-project__title a:hover .s-project__arrow, .s-project__title a:focus-visible .s-project__arrow { transform: translate(0.15em, -0.15em); }
+  @media (prefers-reduced-motion: reduce) { .s-project__arrow { transition: none; } }
+  .s-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   /* Next: the link to the following page, at the end of each page. */
   .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
   .s-next {
@@ -559,6 +568,7 @@
 <main class="s-main">
 <h1>Work</h1>
 <p>Projects I&#x27;ve built are aimed to address specific problems surrounding health equity in locations I&#x27;ve worked.</p>
+<section class="s-project"><h2 class="s-project__title"><a href="https://macsc-recipe-finder-1.streamlit.app/" target="_blank" rel="noopener">Recipe Finder <span class="s-project__arrow" aria-hidden="true">↗</span><span class="s-visually-hidden"> (opens in a new tab)</span></a></h2><p>Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access.</p></section>
 <p class="s-next-wrap"><a class="s-next" id="s-next" href="../moments/" data-go="moments">Next: Moments <span class="s-next__arrow" aria-hidden="true">→</span></a></p>
 <style>
   .c-waves {

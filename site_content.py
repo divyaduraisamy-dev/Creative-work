@@ -130,6 +130,14 @@ class Artwork:
 
 
 @dataclass
+class Project:
+    title: str
+    url: str                # the link it opens (in a new tab)
+    text: str = ""          # a sentence or two about it
+    only: str | None = "domain"
+
+
+@dataclass
 class Gallery:
     heading: str
     pieces: list[Artwork] = field(default_factory=list)
@@ -160,7 +168,8 @@ class Page:
 PAGES = {
     "home": Page("Welcome!", "", [
         Title("Welcome to the site of Divya Duraisamy"),
-        Text("I want this to be a space for me to display my creative work and thoughts."),
+        Text("I want this to be a space for me to display all of my work, whether professional, personal, creative or exploratory.", only="domain"),
+        Text("I want this to be a space for me to display my creative work and thoughts.", only="streamlit"),
         Photo(title="Afternoon Stroll", date="2021-06-20", place="Genesee Valley Park, Rochester, New York"),
         Heading("I look forward to engaging your mind"),
         Text("Take your time to work through the page and learn more about me."),
@@ -172,6 +181,8 @@ PAGES = {
         Title("Work"),
         Text("Projects I've built are aimed to address specific problems surrounding health equity in locations I've worked.", only="domain"),
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.", only="streamlit"),
+        Project("Recipe Finder", "https://macsc-recipe-finder-1.streamlit.app/",
+                "Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access."),
         Waves(),
     ]),
     # Illustrations, photos, stories and cartoons not about KOVU. Header label: Moments.

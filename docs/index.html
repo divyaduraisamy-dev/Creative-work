@@ -112,6 +112,15 @@
   .s-gallery__date { opacity: 0.7; }
   .s-gallery__note { margin-top: 0.25rem; }
 
+  /* Project: a link to something built, with a line about it. */
+  .s-project { padding-top: 1.5rem; }
+  .s-project__title { margin-bottom: 0.25rem; }
+  .s-project__title a { color: inherit; text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-project__arrow { display: inline-block; transition: transform 0.25s ease; }
+  .s-project__title a:hover .s-project__arrow, .s-project__title a:focus-visible .s-project__arrow { transform: translate(0.15em, -0.15em); }
+  @media (prefers-reduced-motion: reduce) { .s-project__arrow { transition: none; } }
+  .s-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   /* Next: the link to the following page, at the end of each page. */
   .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
   .s-next {
@@ -559,7 +568,7 @@
 </header>
 <main class="s-main">
 <h1>Welcome to the site of Divya Duraisamy</h1>
-<p>I want this to be a space for me to display my creative work and thoughts.</p>
+<p>I want this to be a space for me to display all of my work, whether professional, personal, creative or exploratory.</p>
 <style>
   .c-photo {
     --layout-photo-gap: clamp(16px, 4vh, 48px);

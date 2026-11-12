@@ -29,7 +29,7 @@ from pathlib import Path
 from PIL import Image
 
 import site_content as content
-from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Text, ThoughtsList, Title, Torch, WalkButton,
+from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Project, Text, ThoughtsList, Title, Torch, WalkButton,
                           WalkPlanner, Waves)
 
 ROOT = Path(__file__).resolve().parent
@@ -260,6 +260,15 @@ PAGE_CSS = """
   .s-gallery__date { opacity: 0.7; }
   .s-gallery__note { margin-top: 0.25rem; }
 
+  /* Project: a link to something built, with a line about it. */
+  .s-project { padding-top: 1.5rem; }
+  .s-project__title { margin-bottom: 0.25rem; }
+  .s-project__title a { color: inherit; text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-project__arrow { display: inline-block; transition: transform 0.25s ease; }
+  .s-project__title a:hover .s-project__arrow, .s-project__title a:focus-visible .s-project__arrow { transform: translate(0.15em, -0.15em); }
+  @media (prefers-reduced-motion: reduce) { .s-project__arrow { transition: none; } }
+  .s-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   /* Next: the link to the following page, at the end of each page. */
   .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
   .s-next {
@@ -395,6 +404,12 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                 body.append(f'<section class="s-gallery" aria-labelledby="s-gallery-{slug}">'
                             f'<h2 id="s-gallery-{slug}">{esc(block.heading)}</h2>'
                             f'<ul class="s-gallery__items">{items}</ul></section>')
+        elif isinstance(block, Project):
+            body.append(f'<section class="s-project"><h2 class="s-project__title">'
+                        f'<a href="{esc(block.url)}" target="_blank" rel="noopener">{esc(block.title)}'
+                        f' <span class="s-project__arrow" aria-hidden="true">↗</span>'
+                        f'<span class="s-visually-hidden"> (opens in a new tab)</span></a></h2>'
+                        + (f"<p>{esc(block.text)}</p>" if block.text else "") + "</section>")
         elif isinstance(block, ThoughtsList):
             items = "".join(
                 f'<li><a href="{prefix}thoughts/{pc.slug}/"><span class="s-thoughts__title">{esc(pc.title)}</span></a>'
