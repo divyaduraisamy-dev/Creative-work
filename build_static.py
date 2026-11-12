@@ -405,10 +405,20 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                             f'<h2 id="s-gallery-{slug}">{esc(block.heading)}</h2>'
                             f'<ul class="s-gallery__items">{items}</ul></section>')
         elif isinstance(block, Project):
-            body.append(f'<section class="s-project"><h2 class="s-project__title">'
-                        f'<a href="{esc(block.url)}" target="_blank" rel="noopener">{esc(block.title)}'
-                        f' <span class="s-project__arrow" aria-hidden="true">↗</span>'
-                        f'<span class="s-visually-hidden"> (opens in a new tab)</span></a></h2>'
+            if block.drawing:
+                # The drawing is the link: pull it (or click) to open the project in a new tab.
+                art = prefix + copy_asset(ROOT / block.drawing)
+                markup = component("custom-features/recipe-bowl.html")
+                markup = markup.replace("url('assets/recipe-bowl.webp')", f"url('{art}')")
+                markup = markup.replace('href="#"', f'href="{esc(block.url)}"', 1)
+                title = f'<h2 class="s-project__title">{esc(block.title)}</h2>' + once("recipe-bowl", markup)
+                start.append(f'CustomPetHead.init("c-recipe-bowl", {json.dumps(WALK_OPTIONS)});')
+                start.append('CustomLinkPull.init("c-recipe-bowl");')
+            else:
+                title = (f'<h2 class="s-project__title"><a href="{esc(block.url)}" target="_blank" rel="noopener">'
+                         f'{esc(block.title)} <span class="s-project__arrow" aria-hidden="true">↗</span>'
+                         f'<span class="s-visually-hidden"> (opens in a new tab)</span></a></h2>')
+            body.append(f'<section class="s-project">{title}'
                         + (f"<p>{esc(block.text)}</p>" if block.text else "") + "</section>")
         elif isinstance(block, ThoughtsList):
             items = "".join(

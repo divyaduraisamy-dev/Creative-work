@@ -1,0 +1,67 @@
+<!--
+  Component: recipe-bowl
+  Source:    custom (Divya's own drawing; uses the pet-head stretch: CustomPetHead, code written from scratch)
+  Notes:     The Recipe Finder button on the Work page (divyaduraisamy.org): a hand-drawn bowl
+             reading "Show me recipes". Like the walk bubble (walk-drawing.html): grab and pull it
+             and it stretches like rubber, wobbling back when let go. Pulling and letting go, or a
+             plain click, opens the recipe app in a new tab (CustomLinkPull listens for pet:release
+             and click). The drawing is a mask over the page's text colour, so the lines are cream
+             on black or black on cream.
+             Without interactions.js it is a plain link to the app.
+  Hooks:     id="c-recipe-bowl" (CustomPetHead.init("c-recipe-bowl", { maxTilt: 0, ... }),
+             CustomLinkPull.init("c-recipe-bowl")),
+             .c-linkdraw__btn (the link that stretches; also .c-pet__rig so the module finds it),
+             .c-linkdraw__art (--art: url(...) of the transparent drawing)
+  Tokens:    color.text, layout.linkdraw-width
+-->
+<style>
+  .c-linkdraw {
+    --color-text: #f2ead3;
+    --layout-linkdraw-width: min(22rem, 70vw);
+
+    width: var(--layout-linkdraw-width);
+    margin: 0.75rem 0 0.5rem;
+    color: var(--color-text);
+    transform: rotate(-2deg);
+  }
+
+  :root[data-site-theme="light"] .c-linkdraw { --color-text: #000000; }
+
+  .c-linkdraw__btn {
+    display: block;
+    width: 100%;
+    color: inherit;
+    cursor: grab;
+    touch-action: none; /* a finger drag pulls the bowl instead of scrolling */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-tap-highlight-color: transparent;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  .c-linkdraw[data-mood="grab"] .c-linkdraw__btn { cursor: grabbing; }
+
+  .c-linkdraw__art {
+    display: block;
+    aspect-ratio: 1000 / 700;
+    background: currentColor;
+    -webkit-mask: var(--art) center / contain no-repeat;
+    mask: var(--art) center / contain no-repeat;
+    pointer-events: none;
+  }
+
+  .c-linkdraw__btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 6px;
+    border-radius: 1rem;
+  }
+</style>
+
+<div class="c-linkdraw" id="c-recipe-bowl" data-source="custom" data-mood="idle">
+  <a class="c-linkdraw__btn c-pet__rig" href="#" target="_blank" rel="noopener" draggable="false"
+     aria-label="Show me recipes (opens in a new tab)">
+    <span class="c-linkdraw__art" style="--art: url('assets/recipe-bowl.webp')"></span>
+  </a>
+</div>

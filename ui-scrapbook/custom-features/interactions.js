@@ -11,6 +11,7 @@
  *     CustomTorchReveal.init("c-pet-head");      // hold-and-drag light that shows a hidden picture
  *     CustomWalkPlanner.init("c-walk-button");   // pulling the walk button opens the walk planner
  *     CustomWalkForecast.init("c-walk-forecast"); // the in-page walk planner (plain web version)
+ *     CustomLinkPull.init("c-recipe-bowl");      // pulling a drawn link (the recipe bowl) opens it
  *   init() accepts an element id or an element and is safe to call twice.
  *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
  *
@@ -2051,6 +2052,33 @@ const CustomNextLink = {
   },
 };
 
+/* Link pull ---------------------------------------------------------------------------------------
+ * A drawn link that stretches with CustomPetHead (recipe-bowl.html). A plain click or Enter
+ * follows the link as usual (new tab). Pulling and letting go opens it too: the release opens
+ * the tab, and the click that the same press sends right after is swallowed so only one opens.
+ */
+const CustomLinkPull = {
+  options: { minPull: 0.05 },  // share of the full pull that counts as a pull, not a click
+
+  init(target = "c-recipe-bowl", options = {}) {
+    const root = CustomEnv.resolve(target);
+    if (!root || root.dataset.linkPull) return;
+    root.dataset.linkPull = "on";
+    const opts = { ...this.options, ...options };
+    const link = root.querySelector("a[href]");
+    if (!link) return;
+    let opened = 0;
+    root.addEventListener("pet:release", (e) => {
+      if (!e.detail || e.detail.pull < opts.minPull) return;  // a click: the link handles it
+      opened = performance.now();
+      window.open(link.href, "_blank", "noopener");
+    });
+    link.addEventListener("click", (e) => {
+      if (performance.now() - opened < 600) e.preventDefault();
+    });
+  },
+};
+
 window.CustomLogoLoader = CustomLogoLoader;
 window.CustomPetHead = CustomPetHead;
 window.CustomCornerLogo = CustomCornerLogo;
@@ -2061,3 +2089,4 @@ window.CustomPageTransition = CustomPageTransition;
 window.CustomWalkPlanner = CustomWalkPlanner;
 window.CustomWalkForecast = CustomWalkForecast;
 window.CustomNextLink = CustomNextLink;
+window.CustomLinkPull = CustomLinkPull;

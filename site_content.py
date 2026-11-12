@@ -134,6 +134,7 @@ class Project:
     title: str
     url: str                # the link it opens (in a new tab)
     text: str = ""          # a sentence or two about it
+    drawing: str | None = None  # optional hand-drawn button (transparent line art) you can pull to open it
     only: str | None = "domain"
 
 
@@ -182,7 +183,8 @@ PAGES = {
         Text("Projects I've built are aimed to address specific problems surrounding health equity in locations I've worked.", only="domain"),
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.", only="streamlit"),
         Project("Recipe Finder", "https://macsc-recipe-finder-1.streamlit.app/",
-                "Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access."),
+                "Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access.",
+                drawing="ui-scrapbook/custom-features/assets/recipe-bowl.webp"),
         Waves(),
     ]),
     # Illustrations, photos, stories and cartoons not about KOVU. Header label: Moments.
