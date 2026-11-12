@@ -97,14 +97,12 @@
   @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
 
-  /* Gallery (Moments): pictures two across (one on phones), each with a title, date and note.
+  /* Gallery (Moments): pictures in columns (three on wide screens, one on phones), each with a
+     title, date, place and note.
      Pictures keep their own shape and colours. */
   .s-gallery { padding-top: 1.5rem; }
-  .s-gallery__items {
-    list-style: none; margin: 1rem 0 0; padding: 0;
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 2rem; align-items: start;
-  }
-  .s-gallery__items li { margin: 0; }
+  .s-gallery__items { list-style: none; margin: 1rem 0 0; padding: 0; columns: 3 18rem; column-gap: 2rem; }
+  .s-gallery__items li { margin: 0 0 2.25rem; break-inside: avoid; }
   .s-gallery__items figure { margin: 0; }
   .s-gallery__items img { display: block; width: 100%; height: auto; }
   .s-gallery__items figcaption { padding-top: 0.6rem; font-size: 0.875rem; line-height: 1.5; }
@@ -112,7 +110,6 @@
   .s-gallery__date, .s-gallery__note { display: block; }
   .s-gallery__date { opacity: 0.7; }
   .s-gallery__note { margin-top: 0.25rem; }
-  @media (max-width: 720px) { .s-gallery__items { grid-template-columns: 1fr; gap: 2rem; } }
 
   /* Next: the link to the following page, at the end of each page. */
   .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }

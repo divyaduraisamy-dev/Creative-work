@@ -22,7 +22,7 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Comic("Title", "2026-08-27", folder="...", alts=[...])
                                  a comic: the folder's panels in name order, each with its description;
                                  the lines take the page's text colour (plain web version only)
-    Gallery("Illustrations", [Artwork("Title", "2022-12-17", "moments/...webp", note="...")])
+    Gallery("Illustrations", [Artwork("Title", "2022-12-17", "moments/...webp", place="...", note="...")])
                                  a section of pictures with a caption under each, newest first; an
                                  empty section is left out (plain web version only)
 
@@ -121,9 +121,10 @@ class Comic:
 
 @dataclass
 class Artwork:
-    title: str
-    date: str               # year-month-day it was made or taken
+    title: str              # "" for none: the caption is just the date and place
+    date: str               # when it was made or taken: "2022-12-17", "2021-06" (June 2021) or "Fall 2019"
     image: str              # picture file (metadata stripped; the repository is public)
+    place: str = ""         # optional, shown after the date
     note: str = ""          # optional line under the title
     alt: str = ""           # what it shows, for screen readers (the title if empty)
 
@@ -182,7 +183,48 @@ PAGES = {
                         "a pink-faced fish peeks out of a striped shell, a large diamond-shaped fish with "
                         "one big eye faces right, and part of another fish shows at the edge."),
         ]),
-        Gallery("Photos"),
+        Gallery("Photos", [
+            Artwork('', 'Fall 2019', 'moments/photos/2019-fall-library.webp', 
+                    alt='Black and white: a domed library with tall columns at dusk, framed by dark trees, two people walking by the steps.'),
+            Artwork('', 'Fall 2019', 'moments/photos/2019-fall-main-street.webp', 
+                    alt='Black and white: the curved front of an old theatre on a corner of Main Street, two people crossing in the foreground.'),
+            Artwork('', 'Fall 2019', 'moments/photos/2019-fall-mural.webp', 
+                    alt='Black and white: a man walks past a painted wall with hearts, figures and the word Gemeinschaft.'),
+            Artwork('', '2022-01', 'moments/photos/2022-01-kayak.webp', 
+                    alt='A kayaker paddles on rippling blue water below green mountains with clouds resting on their peaks.'),
+            Artwork('', '2022-01', 'moments/photos/2022-01-beach.webp', 
+                    alt='People sit and stand on a sandy beach at golden hour as big waves roll in, trees leaning at the left.'),
+            Artwork('', '2022-01', 'moments/photos/2022-01-lava-field.webp', 
+                    alt='People walk through bright green ground cover beside black lava rock, an old building and palm trees behind.'),
+            Artwork('', '2022-01', 'moments/photos/2022-01-from-the-plane.webp', 
+                    alt='From a plane window: a coastline glowing orange under a band of sunset and a dark grey sky.'),
+            Artwork('', 'Fall 2019', 'moments/photos/2019-fall-little-library.webp', 
+                    alt='Black and white: a little free library among tall leafy plants, a helmet resting on its roof, a house behind.'),
+            Artwork('', '2021-06', 'moments/photos/2021-06-pines.webp', 
+                    alt='Tall pine trunks on a green lawn beside a still, dark lake that reflects the forest.'),
+            Artwork('', '2026-07', 'moments/photos/2026-07-lighthouse.webp', 
+                    alt='A small white lighthouse with its light glowing, seen through dark pines above calm water at dusk.'),
+            Artwork('', '2017-02', 'moments/photos/2017-02-sea-star.webp', place='Phuket, Thailand', 
+                    alt='Underwater: a snorkeler in blue fins holds up a red and white cushion sea star.'),
+            Artwork('', '2017-02', 'moments/photos/2017-02-clownfish.webp', place='Phuket, Thailand', 
+                    alt='Underwater: a black, white and orange clownfish close up beside a sea anemone.'),
+            Artwork('', '2017-02', 'moments/photos/2017-02-clownfish-pair.webp', place='Phuket, Thailand', 
+                    alt='Underwater: two clownfish swim above a reef and its anemones.'),
+            Artwork('Playing Thayakaram', 'Fall 2021', 'moments/photos/2021-fall-thayakaram.webp', 
+                    alt='Hands reach toward a game board on the carpet, its pieces in green and yellow.'),
+            Artwork('', '2021-06', 'moments/photos/2021-06-blanket.webp', place='Genesee Valley Park', 
+                    alt='Black and white: a blanket on the grass with a sketchbook, markers and a phone, bags nearby.'),
+            Artwork('', '2023-03', 'moments/photos/2023-03-dixie-national-forest.webp', place='Dixie National Forest', 
+                    alt='A Dixie National Forest sign in front of red rock towers, with snow on the ground and clouds above.'),
+            Artwork('', '2022-02', 'moments/photos/2022-02-niagara-falls.webp', place='Niagara Falls', 
+                    alt='A wide waterfall in winter, its banks covered in snow and ice under a pale pink sky.'),
+            Artwork('', '2022-07', 'moments/photos/2022-07-ontario-beach.webp', place='Ontario Beach', 
+                    alt='Black and white: people swimming in a calm bay with boats anchored and a tree-lined shore behind.'),
+            Artwork('Around the Corner', '2021-06', 'moments/photos/2021-06-around-the-corner.webp', place='Genesee Valley Park', 
+                    alt='Black and white: a small dog on the grass by a big tree trunk where a park path curves out of sight.'),
+            Artwork('', '2023-03', 'moments/photos/2023-03-bryce-canyon.webp', place='Bryce Canyon', 
+                    alt='Snow over rows of orange rock spires at sunset, distant cliffs lit pink beneath the clouds.'),
+        ]),
         Gallery("Stories & Cartoons"),
         Waves(),
     ], only="domain"),

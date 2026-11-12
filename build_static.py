@@ -246,14 +246,12 @@ PAGE_CSS = """
   @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
 
-  /* Gallery (Moments): pictures two across (one on phones), each with a title, date and note.
+  /* Gallery (Moments): pictures in columns (three on wide screens, one on phones), each with a
+     title, date, place and note.
      Pictures keep their own shape and colours. */
   .s-gallery { padding-top: 1.5rem; }
-  .s-gallery__items {
-    list-style: none; margin: 1rem 0 0; padding: 0;
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 2rem; align-items: start;
-  }
-  .s-gallery__items li { margin: 0; }
+  .s-gallery__items { list-style: none; margin: 1rem 0 0; padding: 0; columns: 3 18rem; column-gap: 2rem; }
+  .s-gallery__items li { margin: 0 0 2.25rem; break-inside: avoid; }
   .s-gallery__items figure { margin: 0; }
   .s-gallery__items img { display: block; width: 100%; height: auto; }
   .s-gallery__items figcaption { padding-top: 0.6rem; font-size: 0.875rem; line-height: 1.5; }
@@ -261,7 +259,6 @@ PAGE_CSS = """
   .s-gallery__date, .s-gallery__note { display: block; }
   .s-gallery__date { opacity: 0.7; }
   .s-gallery__note { margin-top: 0.25rem; }
-  @media (max-width: 720px) { .s-gallery__items { grid-template-columns: 1fr; gap: 2rem; } }
 
   /* Next: the link to the following page, at the end of each page. */
   .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
@@ -303,6 +300,22 @@ HEAD_JS = """
   } catch (e) {}
 })();
 """
+
+
+SEASON_MONTH = {"winter": 1, "spring": 4, "summer": 7, "fall": 10, "autumn": 10}
+
+
+def art_date(text: str) -> tuple[str, str, str]:
+    """A piece's date as (shown, for <time datetime>, sort key): "2022-12-17" -> December 17, 2022;
+    "2021-06" -> June 2021; "Fall 2019" stays as written."""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return long_date(date.fromisoformat(text)), text, text
+    if re.fullmatch(r"\d{4}-\d{2}", text):
+        return date.fromisoformat(text + "-01").strftime("%B %Y"), text, text + "-00"
+    season, _, year = text.partition(" ")
+    if season.lower() in SEASON_MONTH and re.fullmatch(r"\d{4}", year):
+        return text, year, f"{year}-{SEASON_MONTH[season.lower()]:02d}-00"
+    raise ValueError(f'Date "{text}": use 2022-12-17, 2021-06 or Fall 2019')
 
 
 def image_size(path: Path) -> tuple[int, int]:
@@ -365,15 +378,18 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                         f'<ol class="s-comic__panels">{panels}</ol></section>')
         elif isinstance(block, Gallery):
             # Newest first; a section with nothing in it yet is left out.
+            def caption(art) -> str:
+                shown, machine, _ = art_date(art.date)
+                details = f'<time datetime="{machine}">{esc(shown)}</time>' + (f" · {esc(art.place)}" if art.place else "")
+                return ((f'<cite class="s-gallery__title">{esc(art.title)}</cite>' if art.title else "")
+                        + f'<span class="s-gallery__date">{details}</span>'
+                        + (f'<span class="s-gallery__note">{esc(art.note)}</span>' if art.note else ""))
             items = "".join(
                 f'<li><figure><img src="{prefix}{copy_asset(ROOT / art.image, "moments")}" '
                 f'alt="{esc(art.alt or art.title)}" loading="lazy" decoding="async"'
                 + "".join(f' {k}="{v}"' for k, v in zip(("width", "height"), image_size(ROOT / art.image)))
-                + f'><figcaption><cite class="s-gallery__title">{esc(art.title)}</cite>'
-                f'<time class="s-gallery__date" datetime="{art.date}">{long_date(date.fromisoformat(art.date))}</time>'
-                + (f'<span class="s-gallery__note">{esc(art.note)}</span>' if art.note else "")
-                + "</figcaption></figure></li>"
-                for art in sorted(block.pieces, key=lambda a: a.date, reverse=True))
+                + f'><figcaption>{caption(art)}</figcaption></figure></li>'
+                for art in sorted(block.pieces, key=lambda a: art_date(a.date)[2], reverse=True))
             if items:
                 slug = re.sub(r"[^a-z0-9]+", "-", block.heading.lower()).strip("-")
                 body.append(f'<section class="s-gallery" aria-labelledby="s-gallery-{slug}">'
