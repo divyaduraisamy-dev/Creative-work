@@ -26,8 +26,10 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from PIL import Image
+
 import site_content as content
-from site_content import (Comic, Heading, Page, Pet, Photo, Text, ThoughtsList, Title, Torch, WalkButton,
+from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Text, ThoughtsList, Title, Torch, WalkButton,
                           WalkPlanner, Waves)
 
 ROOT = Path(__file__).resolve().parent
@@ -45,6 +47,7 @@ DESCRIPTIONS = {
     "": "Divya Duraisamy combines public health and data science to build human centered projects "
         "that help people regain autonomy over their health.",
     "work": "Divya Duraisamy's work on health equity, and how that perspective changes over time.",
+    "moments": "Seen & Captured: illustrations, photos, stories and cartoons by Divya Duraisamy.",
     "kovu": "Projects inspired by Divya Duraisamy's dog, Kovu, including a tool that checks whether "
             "it's too hot to take a dog for a walk.",
     "thoughts": "Thought pieces by Divya Duraisamy on philosophy, ethics and reflection, and how that "
@@ -243,6 +246,34 @@ PAGE_CSS = """
   @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
 
+  /* Gallery (Moments): pictures two across (one on phones), each with a title, date and note.
+     Pictures keep their own shape and colours. */
+  .s-gallery { padding-top: 1.5rem; }
+  .s-gallery__items {
+    list-style: none; margin: 1rem 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 2rem; align-items: start;
+  }
+  .s-gallery__items li { margin: 0; }
+  .s-gallery__items figure { margin: 0; }
+  .s-gallery__items img { display: block; width: 100%; height: auto; }
+  .s-gallery__items figcaption { padding-top: 0.6rem; font-size: 0.875rem; line-height: 1.5; }
+  .s-gallery__title { display: block; font: 400 1.25rem/1.25 "Londrina Solid", sans-serif; font-style: normal; }
+  .s-gallery__date, .s-gallery__note { display: block; }
+  .s-gallery__date { opacity: 0.7; }
+  .s-gallery__note { margin-top: 0.25rem; }
+  @media (max-width: 720px) { .s-gallery__items { grid-template-columns: 1fr; gap: 2rem; } }
+
+  /* Next: the link to the following page, at the end of each page. */
+  .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
+  .s-next {
+    display: inline-block; padding: 0; border: 0; background: none; color: inherit; cursor: pointer;
+    font: 400 1.75rem/1.2 "Londrina Solid", sans-serif; text-decoration: none;
+  }
+  .s-next__arrow { display: inline-block; transition: transform 0.25s ease; }
+  .s-next:hover, .s-next:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-next:hover .s-next__arrow, .s-next:focus-visible .s-next__arrow { transform: translateX(0.3em); }
+  @media (prefers-reduced-motion: reduce) { .s-next__arrow { transition: none; } }
+
   /* The opening loader only plays on the first page of a visit. */
   :root[data-logo-loader-seen] .c-loader { display: none; }
 
@@ -272,6 +303,24 @@ HEAD_JS = """
   } catch (e) {}
 })();
 """
+
+
+def image_size(path: Path) -> tuple[int, int]:
+    """Width and height, so the page doesn't jump while pictures load."""
+    with Image.open(path) as im:
+        return im.size
+
+
+def next_link(name: str, pages: dict[str, str]) -> str:
+    """The "Next" link at the end of a page: the following page in PAGES order, or Contact after the last."""
+    names = list(domain_pages())
+    after = names[names.index(name) + 1] if name in names and names.index(name) + 1 < len(names) else None
+    if after:
+        label = domain_pages()[after].title
+        return (f'<p class="s-next-wrap"><a class="s-next" id="s-next" href="{pages[after]}" data-go="{after}">'
+                f'Next: {esc(label)} <span class="s-next__arrow" aria-hidden="true">→</span></a></p>')
+    return ('<p class="s-next-wrap"><button class="s-next" id="s-next" type="button" data-open-contact>'
+            'Next: Contact <span class="s-next__arrow" aria-hidden="true">→</span></button></p>')
 
 
 def domain_pages() -> dict[str, Page]:
@@ -314,6 +363,22 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                         f'<h2 id="s-comic-{esc(block.title.lower())}">{esc(block.title)}</h2>'
                         f'<p class="s-comic__date"><time datetime="{day.isoformat()}">{long_date(day)}</time></p>'
                         f'<ol class="s-comic__panels">{panels}</ol></section>')
+        elif isinstance(block, Gallery):
+            # Newest first; a section with nothing in it yet is left out.
+            items = "".join(
+                f'<li><figure><img src="{prefix}{copy_asset(ROOT / art.image, "moments")}" '
+                f'alt="{esc(art.alt or art.title)}" loading="lazy" decoding="async"'
+                + "".join(f' {k}="{v}"' for k, v in zip(("width", "height"), image_size(ROOT / art.image)))
+                + f'><figcaption><cite class="s-gallery__title">{esc(art.title)}</cite>'
+                f'<time class="s-gallery__date" datetime="{art.date}">{long_date(date.fromisoformat(art.date))}</time>'
+                + (f'<span class="s-gallery__note">{esc(art.note)}</span>' if art.note else "")
+                + "</figcaption></figure></li>"
+                for art in sorted(block.pieces, key=lambda a: a.date, reverse=True))
+            if items:
+                slug = re.sub(r"[^a-z0-9]+", "-", block.heading.lower()).strip("-")
+                body.append(f'<section class="s-gallery" aria-labelledby="s-gallery-{slug}">'
+                            f'<h2 id="s-gallery-{slug}">{esc(block.heading)}</h2>'
+                            f'<ul class="s-gallery__items">{items}</ul></section>')
         elif isinstance(block, ThoughtsList):
             items = "".join(
                 f'<li><a href="{prefix}thoughts/{pc.slug}/"><span class="s-thoughts__title">{esc(pc.title)}</span></a>'
@@ -403,6 +468,9 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
             body.append(once("walk-forecast", component("custom-features/walk-forecast.html")))
             start.append(f'CustomWalkForecast.init("c-walk-forecast", {json.dumps({"table": table})});')
         elif isinstance(block, Waves):
+            if not piece:
+                body.append(next_link(name, pages))
+                start.append('CustomNextLink.init("s-next");')
             body.append(once("waves", component("custom-features/wave-field.html")))
             start.append('WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");')
 

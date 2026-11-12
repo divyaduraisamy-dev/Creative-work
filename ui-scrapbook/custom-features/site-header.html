@@ -334,6 +334,20 @@
     .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.08em; }
   }
 
+  /* Six links (Moments added): a little smaller and closer from 640 to 1199px, so the row never
+     reaches the logo or LinkedIn. Narrower screens use the phone rules above. */
+  @media (min-width: 640px) and (max-width: 767px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --text-link: 12px; --space-menu-gap: clamp(8px, calc(10vw - 54px), 40px); }
+    .c-site-header__menu:has(> :nth-child(6)) .c-site-header__link { letter-spacing: 0.04em; }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --text-link: 13px; --space-menu-gap: clamp(12px, calc(10vw - 60px), 60px); }
+    .c-site-header__menu:has(> :nth-child(6)) .c-site-header__link { letter-spacing: 0.08em; }
+  }
+  @media (min-width: 1024px) and (max-width: 1199px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --space-menu-gap: calc(8vw - 44px); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
     .c-site-header__contact,
@@ -356,6 +370,7 @@
     <nav class="c-site-header__cell c-site-header__menu" aria-label="Main">
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
+      <a class="c-site-header__link" href="moments" data-go="moments">Moments</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
       <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>

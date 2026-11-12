@@ -20,6 +20,8 @@
  *   CustomCornerLogo  #c-corner-logo   pinned logo: hover colour swap, spring tilt, back to top
  *   CustomSiteHeader  #c-site-header   hairline header: lines bend from the cursor, menu, LinkedIn,
  *                                      Contact email reveal, page colour toggle (CustomSiteTheme)
+ *   CustomNextLink    #s-next          "Next: ..." at the end of a page: goes to the next page with the
+ *                                      logo transition, or (data-open-contact) opens Contact in the header
  */
 
 /* Shared helpers ----------------------------------------------------------------------------- */
@@ -2021,6 +2023,34 @@ const CustomPageTransition = {
   },
 };
 
+/* Next link ----------------------------------------------------------------------------------------
+ * The "Next: ..." link at the bottom of each page (divyaduraisamy.org), so visitors can walk
+ * through the site in order. A link with data-go="page" goes there the way the header does (logo
+ * transition); a button with data-open-contact scrolls up and opens Contact in the header.
+ * Without this module the link is an ordinary link (and the Contact button does nothing).
+ */
+const CustomNextLink = {
+  init(target = "s-next") {
+    const root = typeof target === "string" ? document.getElementById(target) : target;
+    if (!root || root.dataset.enhanced) return null;
+    root.dataset.enhanced = "";
+    root.addEventListener("click", (e) => {
+      const header = document.getElementById("c-site-header");
+      const h = header && CustomSiteHeader.instances.get(header);
+      if (!h) return;
+      if (root.dataset.go) {
+        e.preventDefault();
+        CustomSiteHeader.goTo(h, root.dataset.go);
+      } else if (root.hasAttribute("data-open-contact")) {
+        CustomEnv.scrollToTop();
+        if (!CustomSiteHeader.isContactOpen(h)) CustomSiteHeader.openContact(h);
+        if (h.contactBtn) h.contactBtn.focus({ preventScroll: true });
+      }
+    });
+    return root;
+  },
+};
+
 window.CustomLogoLoader = CustomLogoLoader;
 window.CustomPetHead = CustomPetHead;
 window.CustomCornerLogo = CustomCornerLogo;
@@ -2030,3 +2060,4 @@ window.CustomTorchReveal = CustomTorchReveal;
 window.CustomPageTransition = CustomPageTransition;
 window.CustomWalkPlanner = CustomWalkPlanner;
 window.CustomWalkForecast = CustomWalkForecast;
+window.CustomNextLink = CustomNextLink;

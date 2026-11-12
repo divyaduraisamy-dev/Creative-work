@@ -22,6 +22,12 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Comic("Title", "2026-08-27", folder="...", alts=[...])
                                  a comic: the folder's panels in name order, each with its description;
                                  the lines take the page's text colour (plain web version only)
+    Gallery("Illustrations", [Artwork("Title", "2022-12-17", "moments/...webp", note="...")])
+                                 a section of pictures with a caption under each, newest first; an
+                                 empty section is left out (plain web version only)
+
+Each page on divyaduraisamy.org ends with a "Next" link to the page after it, in the order below;
+the last one opens Contact.
 
 Text and Page take only="domain" (divyaduraisamy.org only) or only="streamlit" (the Streamlit
 site only). Without it, both sites show it.
@@ -113,6 +119,22 @@ class Comic:
     only: str | None = "domain"
 
 
+@dataclass
+class Artwork:
+    title: str
+    date: str               # year-month-day it was made or taken
+    image: str              # picture file (metadata stripped; the repository is public)
+    note: str = ""          # optional line under the title
+    alt: str = ""           # what it shows, for screen readers (the title if empty)
+
+
+@dataclass
+class Gallery:
+    heading: str
+    pieces: list[Artwork] = field(default_factory=list)
+    only: str | None = "domain"
+
+
 # Where KOVU's drawing (kovu-placeholder.png, the whole image) sits on your paintings, as shares of
 # the painting's width and height: [left, top, right, bottom]. Measured from kovujustline.png, the
 # line layer of the same canvas (4828 x 6250), so the drawing's lines land on the painted dog.
@@ -133,7 +155,7 @@ class Page:
     only: str | None = None  # "domain": only on divyaduraisamy.org (no Streamlit page, no header link there)
 
 
-# The first page is the home page. The header's links are Work, KOVU and Thoughts (plus About and Contact).
+# The first page is the home page. The header's links are Work, Moments, KOVU and Thoughts (plus About and Contact).
 PAGES = {
     "home": Page("Welcome!", "", [
         Title("Welcome to the site of Divya Duraisamy"),
@@ -151,6 +173,19 @@ PAGES = {
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.", only="streamlit"),
         Waves(),
     ]),
+    # Illustrations, photos, stories and cartoons not about KOVU. Header label: Moments.
+    "moments": Page("Moments", "moments", [
+        Title("Seen & Captured"),
+        Gallery("Illustrations", [
+            Artwork("Untitled", "2022-12-17", "moments/illustrations/2022-12-17-untitled.webp",
+                    alt="A colourful marker and crayon drawing of fish among green seaweed in blue water: "
+                        "a pink-faced fish peeks out of a striped shell, a large diamond-shaped fish with "
+                        "one big eye faces right, and part of another fish shows at the edge."),
+        ]),
+        Gallery("Photos"),
+        Gallery("Stories & Cartoons"),
+        Waves(),
+    ], only="domain"),
     "kovu": Page("KOVU", "kovu", [
         Title("projects inspired by my dog kovu"),
         Pet(caption="", still=True),

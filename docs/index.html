@@ -98,6 +98,34 @@
   @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
 
+  /* Gallery (Moments): pictures two across (one on phones), each with a title, date and note.
+     Pictures keep their own shape and colours. */
+  .s-gallery { padding-top: 1.5rem; }
+  .s-gallery__items {
+    list-style: none; margin: 1rem 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 2rem; align-items: start;
+  }
+  .s-gallery__items li { margin: 0; }
+  .s-gallery__items figure { margin: 0; }
+  .s-gallery__items img { display: block; width: 100%; height: auto; }
+  .s-gallery__items figcaption { padding-top: 0.6rem; font-size: 0.875rem; line-height: 1.5; }
+  .s-gallery__title { display: block; font: 400 1.25rem/1.25 "Londrina Solid", sans-serif; font-style: normal; }
+  .s-gallery__date, .s-gallery__note { display: block; }
+  .s-gallery__date { opacity: 0.7; }
+  .s-gallery__note { margin-top: 0.25rem; }
+  @media (max-width: 720px) { .s-gallery__items { grid-template-columns: 1fr; gap: 2rem; } }
+
+  /* Next: the link to the following page, at the end of each page. */
+  .s-main .s-next-wrap { margin: 3rem 0 1rem; text-align: right; }
+  .s-next {
+    display: inline-block; padding: 0; border: 0; background: none; color: inherit; cursor: pointer;
+    font: 400 1.75rem/1.2 "Londrina Solid", sans-serif; text-decoration: none;
+  }
+  .s-next__arrow { display: inline-block; transition: transform 0.25s ease; }
+  .s-next:hover, .s-next:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-next:hover .s-next__arrow, .s-next:focus-visible .s-next__arrow { transform: translateX(0.3em); }
+  @media (prefers-reduced-motion: reduce) { .s-next__arrow { transition: none; } }
+
   /* The opening loader only plays on the first page of a visit. */
   :root[data-logo-loader-seen] .c-loader { display: none; }
 
@@ -476,6 +504,20 @@
     .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.08em; }
   }
 
+  /* Six links (Moments added): a little smaller and closer from 640 to 1199px, so the row never
+     reaches the logo or LinkedIn. Narrower screens use the phone rules above. */
+  @media (min-width: 640px) and (max-width: 767px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --text-link: 12px; --space-menu-gap: clamp(8px, calc(10vw - 54px), 40px); }
+    .c-site-header__menu:has(> :nth-child(6)) .c-site-header__link { letter-spacing: 0.04em; }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --text-link: 13px; --space-menu-gap: clamp(12px, calc(10vw - 60px), 60px); }
+    .c-site-header__menu:has(> :nth-child(6)) .c-site-header__link { letter-spacing: 0.08em; }
+  }
+  @media (min-width: 1024px) and (max-width: 1199px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(6)) { --space-menu-gap: calc(8vw - 44px); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
     .c-site-header__contact,
@@ -498,6 +540,7 @@
     <nav class="c-site-header__cell c-site-header__menu" aria-label="Main">
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
+      <a class="c-site-header__link" href="moments" data-go="moments">Moments</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
       <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
@@ -547,6 +590,7 @@
 <p>Take your time to work through the page and learn more about me.</p>
 <h2 id="about">About</h2>
 <p>I combine my knowledge of public health and data science to create human centered projects. I want people to regain autonomy over their health. The tools I build turn analysis into something they can actually use. All of my projects have been built to solve problems I have run into personally or noticed while speaking with others through my work. My goal is to improve health equity for all. I also take photos, doodle and write my thoughts, and go hiking with my dog, Kovu, who has inspired some of my projects.</p>
+<p class="s-next-wrap"><a class="s-next" id="s-next" href="work/" data-go="work">Next: Work <span class="s-next__arrow" aria-hidden="true">→</span></a></p>
 <style>
   .c-waves {
     --color-bg: #000000;
@@ -591,7 +635,8 @@
 <script src="assets/js/interactions.js"></script>
 <script>
 CustomLogoLoader.init("c-logo-loader");
-CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "home", "pages": {"home": "./", "work": "work/", "kovu": "kovu/", "thoughts": "thoughts/"}});
+CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "home", "pages": {"home": "./", "work": "work/", "moments": "moments/", "kovu": "kovu/", "thoughts": "thoughts/"}});
+CustomNextLink.init("s-next");
 WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");
 </script>
 </body>
