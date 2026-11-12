@@ -321,6 +321,19 @@
     .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.02em; }
   }
 
+  /* Five links between phone and laptop widths (640-1023px): the usual 6vw gaps don't fit, and
+     ABOUT ran into the logo and CONTACT into LinkedIn. Gaps grow from 12px at 640 to 42px at 1023
+     instead, so there is always space on both sides. */
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(5)) {
+      --space-menu-gap: clamp(12px, calc(8vw - 40px), 88px);
+    }
+  }
+  /* The narrowest of those (640-767px) also need the letters a little closer. */
+  @media (min-width: 640px) and (max-width: 767px) {
+    .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.08em; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
     .c-site-header__contact,
