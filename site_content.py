@@ -12,7 +12,8 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Pet(caption="...")           KOVU, grabbable; Pet(caption="", still=True) for a still drawing
     Torch(hint="...")            hold-and-drag light around KOVU (put it right after Pet)
                                  frames="folder" plays that folder's pictures (in name order) each press
-    WalkButton("...")            a pill button you can grab and stretch
+    WalkButton("...")            a pill button you can grab and stretch (Streamlit); on the domain,
+                                 the hand-drawn bubble beside KOVU (click only)
     WalkPlanner()                city -> next 12 hours of dog heat risk; opens when WalkButton is pulled
                                  (Streamlit runs walk_planner.py; the plain version uses walk-table.json)
     Waves()                      the wave lines with their credit line
@@ -78,6 +79,9 @@ class Torch:
 @dataclass
 class WalkButton:
     text: str = "What time should we go on a walk?"
+    # divyaduraisamy.org only: the hand-drawn bubble beside KOVU's drawing (transparent line art).
+    # The Streamlit site keeps the stretchy pill with the text above.
+    drawing: str | None = "ui-scrapbook/custom-features/assets/walk-button.webp"
 
 
 @dataclass

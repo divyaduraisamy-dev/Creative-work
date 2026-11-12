@@ -351,11 +351,28 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                 options["frames"] = [prefix + copy_asset(p, Path(block.frames).name)
                                      for p in content.frame_files(block.frames)]
                 if block.match_drawing:
+                    # The drawn walk button (.c-walkdraw) sits in this area: pressing it doesn't paint.
                     options.update(alignTo=".c-pet__img", alignBox=content.DRAWING_BOX, extendEdges=True,
-                                   over=True, ignore=None, busyWhen=None)
+                                   over=True, ignore=".c-walkdraw", busyWhen=None)
             elif block.image:
                 options["image"] = prefix + copy_asset(Path(block.image))
             start.append(f'CustomTorchReveal.init("c-pet-head", {json.dumps(options)});')
+        elif isinstance(block, WalkButton) and block.drawing:
+            # The hand-drawn bubble goes inside KOVU's figure (the torch area), to his left.
+            art = prefix + copy_asset(ROOT / block.drawing)
+            markup = component("custom-features/walk-drawing.html")
+            markup = markup.replace("url('assets/walk-button.webp')", f"url('{art}')")
+            markup = markup.replace('aria-label="What time should we go on a walk?"', f'aria-label="{esc(block.text)}"')
+            pet = next((i for i, part in enumerate(body) if 'id="c-pet-head"' in part), None)
+            if pet is None:
+                body.append(once("walk-drawing", markup))
+            else:
+                head, _, tail = body[pet].rpartition("</figure>")
+                body[pet] = f"{head}{once('walk-drawing', markup)}</figure>{tail}"
+            if any(isinstance(b, WalkPlanner) for b in page.blocks):
+                # Same stretch as the pill; pulling and letting go, or clicking, opens the planner.
+                start.append(f'CustomPetHead.init("c-walk-drawing", {json.dumps(WALK_OPTIONS)});')
+                start.append('CustomWalkPlanner.init("c-walk-drawing", {"panel": "#c-walk-forecast", "everyTime": true});')
         elif isinstance(block, WalkButton):
             markup = component("custom-features/walk-button.html")
             markup = markup.replace(">What time should we go on a walk?<", f">{esc(block.text)}<", 1)

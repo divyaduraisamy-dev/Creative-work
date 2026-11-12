@@ -1,0 +1,83 @@
+<!--
+  Component: walk-drawing
+  Source:    custom (Divya's own drawing; uses the pet-head stretch: CustomPetHead, code written from scratch)
+  Notes:     The walk button as a hand-drawn speech bubble ("What time should we go on a walk?"),
+             for the plain web version (divyaduraisamy.org). It sits in the open space to the left of
+             KOVU's drawing, inside the torch area (#c-pet-head), above the light. Its size and place are
+             shares of KOVU's width (--layout-pet-width), so it shrinks with him and keeps the same spot
+             at every screen width. The drawing is a mask over the page's text colour, so the lines
+             are cream on black or black on cream.
+             Like the pill (walk-button.html): grab and pull it and it stretches like rubber, wobbling
+             back when let go. Pulling and letting go, or a plain click, opens the planner
+             (CustomWalkPlanner listens for pet:release and click), every time, not just the first. Only a press that starts on the
+             bubble counts: a torch stroke that starts elsewhere and ends on it does nothing, and
+             pressing the bubble doesn't paint (the torch ignores .c-walkdraw).
+             Without interactions.js it is a plain button that does nothing.
+             The Streamlit site keeps the pill.
+  Hooks:     id="c-walk-drawing" (CustomPetHead.init("c-walk-drawing", { maxTilt: 0, ... }),
+             CustomWalkPlanner.init("c-walk-drawing", { panel: "#c-walk-forecast", everyTime: true })),
+             .c-walkdraw__btn (the part that stretches; also .c-pet__rig so the module finds it),
+             .c-walkdraw__art (--art: url(...) of the transparent drawing)
+  Tokens:    color.text, layout.walkdraw-width
+-->
+<style>
+  .c-walkdraw,
+  :root .c-pet > .c-walkdraw {  /* outranks the torch's ".c-torch > *" positioning, which comes later */
+    --color-text: #f2ead3;
+    --layout-walkdraw-width: calc(var(--layout-pet-width) * 0.44);
+
+    position: absolute;
+    z-index: 3; /* above the torch light */
+    /* Measured in KOVU's width: the drawing is var(--layout-pet-width) wide, centred, and starts
+       below the torch padding. The bubble starts a tenth of KOVU's width left of the drawing (still
+       on screen at phone width, where KOVU is 80vw) and ends 34% into it, left of his face. */
+    top: calc(var(--layout-torch-padding, 1rem) + var(--layout-pet-width) * 0.01);
+    left: calc(50% - var(--layout-pet-width) * 0.6);
+    width: var(--layout-walkdraw-width);
+    margin: 0;
+    color: var(--color-text);
+    transform: rotate(-2deg);
+  }
+
+  :root[data-site-theme="light"] .c-walkdraw { --color-text: #000000; }
+
+  .c-walkdraw__btn {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: grab;
+    touch-action: none; /* a finger drag pulls the bubble instead of scrolling */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  .c-walkdraw[data-mood="grab"] .c-walkdraw__btn { cursor: grabbing; }
+
+  .c-walkdraw__art {
+    display: block;
+    aspect-ratio: 900 / 796;
+    background: currentColor;
+    -webkit-mask: var(--art) center / contain no-repeat;
+    mask: var(--art) center / contain no-repeat;
+    pointer-events: none;
+  }
+
+  .c-walkdraw__btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 6px;
+    border-radius: 1rem;
+  }
+</style>
+
+<div class="c-walkdraw" id="c-walk-drawing" data-source="custom" data-mood="idle">
+  <button type="button" class="c-walkdraw__btn c-pet__rig" aria-label="What time should we go on a walk?">
+    <span class="c-walkdraw__art" style="--art: url('assets/walk-button.webp')"></span>
+  </button>
+</div>

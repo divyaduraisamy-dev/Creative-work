@@ -1387,12 +1387,15 @@ const CustomTorchReveal = {
  * <html data-walk-open> (page CSS shows the planner only then), scrolls to it and focuses its
  * first field. Where there is no planner on the page (the plain web version), it goes to
  * options.href instead. A page address with ?walk opens it straight away.
+ * By default only the first open scrolls; with options.everyTime, every click or pull scrolls back
+ * to the planner. A pull fires both a release and a click, so presses within 400 ms count once.
  */
 const CustomWalkPlanner = {
   options: {
     panel: ".st-key-walk-planner",  // the planner (Streamlit container key="walk-planner")
     href: null,                     // where to go when the page has no planner
     waitMs: 6000,
+    everyTime: false,               // true: every click / pull scrolls to the planner, not just the first
   },
 
   init(target = "c-walk-button", options = {}) {
@@ -1400,7 +1403,13 @@ const CustomWalkPlanner = {
     if (!root || root.dataset.walkPlanner) return;
     root.dataset.walkPlanner = "on";
     const opts = { ...this.options, ...options };
-    const open = () => this.open(opts);
+    let last = 0;
+    const open = () => {
+      const now = performance.now();
+      if (now - last < 400) return;  // the release and click of one press
+      last = now;
+      this.open(opts);
+    };
     root.addEventListener("pet:release", open);
     root.addEventListener("click", open);
     if (/[?&]walk\b/.test(window.location.search)) this.open(opts, true);
@@ -1417,7 +1426,7 @@ const CustomWalkPlanner = {
       }
       const first = !("walkOpen" in document.documentElement.dataset);
       document.documentElement.dataset.walkOpen = "";
-      if (!first && !fromAddress) return;
+      if (!first && !fromAddress && !opts.everyTime) return;
       requestAnimationFrame(() => {
         panel.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "start" });
         const field = panel.querySelector("input");
