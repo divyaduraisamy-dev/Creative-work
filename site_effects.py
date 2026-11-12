@@ -202,6 +202,10 @@ def site_header(
     Call it at the top of every page, right after logo_loader().
     """
     markup, svg = _split_svg(_component("custom-features/site-header.html"))
+    # Drop header links to pages this site doesn't have (Thoughts is only on divyaduraisamy.org).
+    have = set(pages) if pages else {"home", "work", "kovu"}
+    markup = re.sub(r'\s*<a [^>]*data-go="([^"]+)"[^>]*>.*?</a>',
+                    lambda m: m.group(0) if m.group(1) in have else "", markup)
     restore_svg = (
         'var slot = document.querySelector("#c-site-header [data-svg-slot]");\n'
         f"if (slot) slot.outerHTML = {json.dumps(svg)};\n"

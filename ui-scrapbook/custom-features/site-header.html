@@ -2,14 +2,14 @@
   Component: site-header
   Source:    custom; layout inspired by wodniack-dev's header (https://wodniack.dev/, CC BY-NC 4.0):
              a row of cells divided by hairlines. Code written from scratch.
-  Notes:     Logo | About · Work · KOVU · Contact | LinkedIn | colour toggle (rightmost). Not sticky: it
+  Notes:     Logo | About · Work · KOVU · Thoughts · Contact | LinkedIn | colour toggle (rightmost). Not sticky: it
              scrolls away with the page. With interactions.js (CustomSiteHeader):
                - the hairlines bend away from the cursor and spring back
                - logo, LinkedIn and toggle cells invert on hover; the filled shape's edges are
                  the moving lines, so it stays solid while they bend
                - logo cell: small spring tilt; click = back to the home page (top of it when
                  already there)
-               - Work / KOVU (data-go="work" / "kovu") open their pages: the logo takes over the screen, the
+               - Work / KOVU / Thoughts (data-go="work" / "kovu" / "thoughts") open their pages: the logo takes over the screen, the
                  page changes underneath, the logo slides back into this cell
                  (CustomPageTransition)
                - About smooth-scrolls to id="about" (from another page: goes home first)
@@ -19,7 +19,7 @@
                  the email is stored scrambled in data-email and only assembled on click
              Without interactions.js: plain borders, links jump to #about / #work, Contact does nothing.
   Hooks:     id="c-site-header" (CustomSiteHeader), data-page (this page's name), [data-logo],
-             [data-go] (page name), [data-scroll-to] + [data-on-page], [data-contact-toggle],
+             [data-go] (page name; a site without that page drops the link), [data-scroll-to] + [data-on-page], [data-contact-toggle],
              [data-theme-toggle], [data-email] (base64 of the reversed address), [data-email-link],
              [data-email-copy]. Page theme: <html data-site-theme="dark|light"> (CustomSiteTheme).
   Tokens:    color.bg/fg, layout.header-height/icon-cell, motion.swap
@@ -302,6 +302,25 @@
     }
   }
 
+  /* Five links (divyaduraisamy.org has Thoughts too): tighter on phones so they stay on one line
+     (down to 360px wide); narrower than that, the last links drop to a second line instead of
+     running into the logo. The four-link header (Streamlit) is unchanged. */
+  @media (max-width: 639px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(5)) {
+      --text-link: 10px;
+      --space-menu-gap: 6px;
+      --layout-icon-cell: 42px;
+    }
+    .c-site-header:has(.c-site-header__menu > :nth-child(5)) .c-site-header__logo { padding: 0 9px; }
+    .c-site-header__menu:has(> :nth-child(5)) {
+      flex-wrap: wrap;
+      align-content: center;
+      row-gap: 0;
+      padding: 0 4px;
+    }
+    .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.02em; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
     .c-site-header__contact,
@@ -325,6 +344,7 @@
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
+      <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
     </nav>
     <a class="c-site-header__cell c-site-header__icon" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" data-linkedin>in</a>

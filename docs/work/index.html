@@ -56,6 +56,41 @@
   :root[data-site-theme="light"] .c-pet__img { filter: brightness(0); }
   :root[data-site-theme="light"] .c-waves { --color-bg: #f2ead3; --color-text: #000000; --color-line: #000000; }
 
+  /* Thoughts: the list of pieces, and one piece (a narrower column for easier reading). */
+  .s-main .s-thoughts { list-style: none; margin: 2rem 0 1rem; padding: 0; max-width: 46rem; }
+  .s-thoughts li { padding: 1.25rem 0; border-top: 1px solid color-mix(in srgb, var(--page-fg) 25%, transparent); }
+  .s-thoughts li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--page-fg) 25%, transparent); }
+  .s-thoughts a { color: inherit; text-decoration: none; }
+  .s-thoughts__title { font: 400 1.75rem/1.2 "Londrina Solid", sans-serif; }
+  .s-thoughts a:hover .s-thoughts__title, .s-thoughts a:focus-visible .s-thoughts__title { text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-thoughts li > p + p { margin-top: 0.9rem; }
+  .s-thoughts time, .s-piece__date { display: block; margin: 0.25rem 0 0.5rem; font-size: 0.875rem; opacity: 0.7; }
+  .s-piece { max-width: 42rem; }
+  .s-piece > p + p { margin-top: 1.1rem; }
+  .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-piece__date { margin-bottom: 1.5rem; }
+  .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
+  .s-piece__back a { color: inherit; }
+
+  /* Comic: panels in reading order, three across (two on tablets, one on phones). The drawing is
+     a mask over the page's text colour, so the lines are cream on black or black on cream. */
+  .s-comic { padding-top: 2rem; }
+  .s-main .s-comic__date { margin: 0.25rem 0 1.5rem; font-size: 0.875rem; opacity: 0.7; }
+  .s-comic__panels {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem;
+  }
+  .s-comic__panels li { margin: 0; }
+  .s-comic__panel {
+    display: block;
+    aspect-ratio: 1197 / 1500;
+    background: var(--page-fg);
+    -webkit-mask: var(--panel) center / contain no-repeat;
+    mask: var(--panel) center / contain no-repeat;
+  }
+  @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
+
   /* The opening loader only plays on the first page of a visit. */
   :root[data-logo-loader-seen] .c-loader { display: none; }
 
@@ -402,6 +437,25 @@
     }
   }
 
+  /* Five links (divyaduraisamy.org has Thoughts too): tighter on phones so they stay on one line
+     (down to 360px wide); narrower than that, the last links drop to a second line instead of
+     running into the logo. The four-link header (Streamlit) is unchanged. */
+  @media (max-width: 639px) {
+    .c-site-header:has(.c-site-header__menu > :nth-child(5)) {
+      --text-link: 10px;
+      --space-menu-gap: 6px;
+      --layout-icon-cell: 42px;
+    }
+    .c-site-header:has(.c-site-header__menu > :nth-child(5)) .c-site-header__logo { padding: 0 9px; }
+    .c-site-header__menu:has(> :nth-child(5)) {
+      flex-wrap: wrap;
+      align-content: center;
+      row-gap: 0;
+      padding: 0 4px;
+    }
+    .c-site-header__menu:has(> :nth-child(5)) .c-site-header__link { letter-spacing: 0.02em; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .c-site-header *,
     .c-site-header__contact,
@@ -425,6 +479,7 @@
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
+      <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
     </nav>
     <a class="c-site-header__cell c-site-header__icon" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" data-linkedin>in</a>
@@ -444,7 +499,7 @@
 </header>
 <main class="s-main">
 <h1>Work</h1>
-<p>I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.</p>
+<p>Projects I&#x27;ve built are aimed to address specific problems surrounding health equity in locations I&#x27;ve worked.</p>
 <style>
   .c-waves {
     --color-bg: #000000;
@@ -489,7 +544,7 @@
 <script src="../assets/js/interactions.js"></script>
 <script>
 CustomLogoLoader.init("c-logo-loader");
-CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "work", "pages": {"home": "../", "work": "../work/", "kovu": "../kovu/"}});
+CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "work", "pages": {"home": "../", "work": "../work/", "kovu": "../kovu/", "thoughts": "../thoughts/"}});
 WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");
 </script>
 </body>

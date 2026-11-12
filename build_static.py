@@ -21,10 +21,14 @@ import html
 import json
 import re
 import shutil
+from functools import cache
+from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import site_content as content
-from site_content import Heading, Page, Pet, Photo, Text, Title, Torch, WalkButton, WalkPlanner, Waves
+from site_content import (Comic, Heading, Page, Pet, Photo, Text, ThoughtsList, Title, Torch, WalkButton,
+                          WalkPlanner, Waves)
 
 ROOT = Path(__file__).resolve().parent
 SCRAPBOOK = ROOT / "ui-scrapbook"
@@ -43,17 +47,85 @@ DESCRIPTIONS = {
     "work": "Divya Duraisamy's work on health equity, and how that perspective changes over time.",
     "kovu": "Projects inspired by Divya Duraisamy's dog, Kovu, including a tool that checks whether "
             "it's too hot to take a dog for a walk.",
+    "thoughts": "Thought pieces by Divya Duraisamy on philosophy, ethics and reflection, and how that "
+                "perspective changes over time.",
 }
+
+# Thought pieces: one text file each in thoughts/ (format in thoughts/README.md).
+THOUGHTS = ROOT / "thoughts"
+
+
+@dataclass
+class Piece:
+    slug: str           # web address: /thoughts/<slug>/
+    title: str
+    day: date
+    description: str
+    paragraphs: list[str]
+    full: bool = False  # "Show: full": the Thoughts list shows the whole piece, not a preview
+
+
+def read_piece(path: Path) -> Piece | None:
+    """One piece: "Title:", "Date:" (and optional "Description:", "Draft:", "Show:") lines, a blank line, the text."""
+    head, _, body = path.read_text(encoding="utf-8").replace("\r\n", "\n").strip().partition("\n\n")
+    fields = {}
+    for line in head.splitlines():
+        key, sep, value = line.partition(":")
+        if not sep:
+            raise SystemExit(f"{path.name}: the lines before the first blank line need to look like 'Title: ...'")
+        fields[key.strip().lower()] = value.strip()
+    if fields.get("draft", "").lower() in {"yes", "true"}:
+        print(f"skipped {path.relative_to(ROOT)} (draft)")
+        return None
+    missing = [k for k in ("title", "date") if not fields.get(k)]
+    if missing:
+        raise SystemExit(f"{path.name}: add a {' and '.join(missing)} line at the top")
+    try:
+        day = date.fromisoformat(fields["date"])
+    except ValueError:
+        raise SystemExit(f"{path.name}: write the date as year-month-day, e.g. 2026-11-20")
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+    if not paragraphs:
+        raise SystemExit(f"{path.name}: the piece has no text after the blank line")
+    words = " ".join(paragraphs[0].split())
+    description = fields.get("description") or (words if len(words) <= 155 else words[:152].rsplit(" ", 1)[0] + "…")
+    slug = re.sub(r"[^a-z0-9]+", "-", path.stem.lower()).strip("-")
+    show = fields.get("show", "preview").lower()
+    if show not in {"full", "preview"}:
+        raise SystemExit(f"{path.name}: write 'Show: full' to show the whole piece on the Thoughts page, or leave the line out")
+    return Piece(slug, fields["title"], day, description, paragraphs, full=show == "full")
+
+
+@cache
+def pieces() -> list[Piece]:
+    """Published pieces, newest first."""
+    found = [read_piece(f) for f in sorted(THOUGHTS.glob("*.txt"))] if THOUGHTS.exists() else []
+    return sorted((p for p in found if p), key=lambda p: (p.day, p.title), reverse=True)
+
+
+def long_date(day: date) -> str:
+    return f"{day:%B} {day.day}, {day.year}"
+
+
+def piece_page(piece: Piece) -> Page:
+    """The page for one piece (its blocks are filled in by render_page)."""
+    return Page(piece.title, f"thoughts/{piece.slug}", [Waves()], only="domain")
 
 
 def page_url(page: Page) -> str:
     return SITE_URL + (page.path + "/" if page.path else "")
 
 
-def search_tags(page: Page) -> str:
-    """Head tags only search engines read: summary, main address, and (home) who the site belongs to."""
-    tags = [f'<meta name="description" content="{esc(DESCRIPTIONS[page.path])}">',
+def search_tags(page: Page, piece: Piece | None = None) -> str:
+    """Head tags only search engines read: summary, main address, and who the site or piece is by."""
+    summary = piece.description if piece else DESCRIPTIONS[page.path]
+    tags = [f'<meta name="description" content="{esc(summary)}">',
             f'<link rel="canonical" href="{page_url(page)}">']
+    if piece:
+        article = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": piece.title,
+                   "datePublished": piece.day.isoformat(), "description": piece.description,
+                   "url": page_url(page), "author": {"@type": "Person", "name": OWNER_NAME, "url": SITE_URL}}
+        tags.append(f'<script type="application/ld+json">{json.dumps(article)}</script>')
     if page.path == "":
         person = {"@context": "https://schema.org", "@type": "Person", "name": OWNER_NAME,
                   "url": SITE_URL, "description": DESCRIPTIONS[""], "sameAs": [content.LINKEDIN]}
@@ -130,6 +202,41 @@ PAGE_CSS = """
   :root[data-site-theme="light"] .c-pet__img { filter: brightness(0); }
   :root[data-site-theme="light"] .c-waves { --color-bg: #f2ead3; --color-text: #000000; --color-line: #000000; }
 
+  /* Thoughts: the list of pieces, and one piece (a narrower column for easier reading). */
+  .s-main .s-thoughts { list-style: none; margin: 2rem 0 1rem; padding: 0; max-width: 46rem; }
+  .s-thoughts li { padding: 1.25rem 0; border-top: 1px solid color-mix(in srgb, var(--page-fg) 25%, transparent); }
+  .s-thoughts li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--page-fg) 25%, transparent); }
+  .s-thoughts a { color: inherit; text-decoration: none; }
+  .s-thoughts__title { font: 400 1.75rem/1.2 "Londrina Solid", sans-serif; }
+  .s-thoughts a:hover .s-thoughts__title, .s-thoughts a:focus-visible .s-thoughts__title { text-decoration: underline; text-underline-offset: 0.2em; }
+  .s-thoughts li > p + p { margin-top: 0.9rem; }
+  .s-thoughts time, .s-piece__date { display: block; margin: 0.25rem 0 0.5rem; font-size: 0.875rem; opacity: 0.7; }
+  .s-piece { max-width: 42rem; }
+  .s-piece > p + p { margin-top: 1.1rem; }
+  .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-piece__date { margin-bottom: 1.5rem; }
+  .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
+  .s-piece__back a { color: inherit; }
+
+  /* Comic: panels in reading order, three across (two on tablets, one on phones). The drawing is
+     a mask over the page's text colour, so the lines are cream on black or black on cream. */
+  .s-comic { padding-top: 2rem; }
+  .s-main .s-comic__date { margin: 0.25rem 0 1.5rem; font-size: 0.875rem; opacity: 0.7; }
+  .s-comic__panels {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem;
+  }
+  .s-comic__panels li { margin: 0; }
+  .s-comic__panel {
+    display: block;
+    aspect-ratio: 1197 / 1500;
+    background: var(--page-fg);
+    -webkit-mask: var(--panel) center / contain no-repeat;
+    mask: var(--panel) center / contain no-repeat;
+  }
+  @media (max-width: 900px) { .s-comic__panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .s-comic__panels { grid-template-columns: 1fr; gap: 1rem; } }
+
   /* The opening loader only plays on the first page of a visit. */
   :root[data-logo-loader-seen] .c-loader { display: none; }
 
@@ -161,10 +268,14 @@ HEAD_JS = """
 """
 
 
-def render_page(name: str, page: Page) -> str:
-    depth = 1 if page.path else 0
+def domain_pages() -> dict[str, Page]:
+    return {n: p for n, p in content.PAGES.items() if content.shown_on(p, "domain")}
+
+
+def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
+    depth = page.path.count("/") + 1 if page.path else 0
     prefix = "../" * depth
-    pages = {n: (prefix + (p.path + "/" if p.path else "")) or "./" for n, p in content.PAGES.items()}
+    pages = {n: (prefix + (p.path + "/" if p.path else "")) or "./" for n, p in domain_pages().items()}
 
     body: list[str] = []
     start: list[str] = []
@@ -177,8 +288,37 @@ def render_page(name: str, page: Page) -> str:
         styles_done.add(relative)
         return markup
 
+    if piece:
+        body.append(f'<article class="s-piece"><h1>{esc(piece.title)}</h1>'
+                    f'<p class="s-piece__date"><time datetime="{piece.day.isoformat()}">{long_date(piece.day)}</time></p>'
+                    + "".join(f"<p>{esc(par).replace(chr(10), '<br>')}</p>" for par in piece.paragraphs)
+                    + f'<p class="s-piece__back"><a href="{pages["thoughts"]}">← All thoughts</a></p></article>')
+
     for block in page.blocks:
-        if isinstance(block, Title):
+        if not content.shown_on(block, "domain"):
+            continue
+        if isinstance(block, Comic):
+            # Each panel is a mask filled with the page's text colour, so it follows the theme.
+            panels = "".join(
+                f'<li><span class="s-comic__panel" role="img" aria-label="{esc(alt)}" '
+                f'style="--panel: url(\'{prefix}{copy_asset(path, Path(block.folder).name)}\')"></span></li>'
+                for path, alt in zip(content.frame_files(block.folder), block.alts, strict=True))
+            day = date.fromisoformat(block.date)
+            body.append(f'<section class="s-comic" aria-labelledby="s-comic-{esc(block.title.lower())}">'
+                        f'<h2 id="s-comic-{esc(block.title.lower())}">{esc(block.title)}</h2>'
+                        f'<p class="s-comic__date"><time datetime="{day.isoformat()}">{long_date(day)}</time></p>'
+                        f'<ol class="s-comic__panels">{panels}</ol></section>')
+        elif isinstance(block, ThoughtsList):
+            items = "".join(
+                f'<li><a href="{prefix}thoughts/{pc.slug}/"><span class="s-thoughts__title">{esc(pc.title)}</span></a>'
+                f'<time datetime="{pc.day.isoformat()}">{long_date(pc.day)}</time>'
+                + ("".join(f"<p>{esc(par).replace(chr(10), '<br>')}</p>" for par in pc.paragraphs) if pc.full
+                   else f"<p>{esc(pc.description)}</p>")
+                + "</li>"
+                for pc in pieces())
+            if items:
+                body.append(f'<ul class="s-thoughts">{items}</ul>')
+        elif isinstance(block, Title):
             body.append(f"<h1>{esc(block.text)}</h1>")
         elif isinstance(block, Text):
             body.append(f"<p>{esc(block.text)}</p>")
@@ -258,7 +398,7 @@ def render_page(name: str, page: Page) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(OWNER_NAME if page.path == "" else f"{page.title} · {OWNER_NAME}")}</title>
-{search_tags(page)}
+{search_tags(page, piece)}
 <link rel="icon" href="{prefix}assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -288,17 +428,21 @@ def main() -> None:
     shutil.copyfile(CUSTOM / "interactions.js", OUT / "assets" / "js" / "interactions.js")
     shutil.copyfile(SCRAPBOOK / "wodniack-dev" / "interactions.js", OUT / "assets" / "js" / "wodniack-interactions.js")
     copy_asset(CUSTOM / "assets" / "logo.svg")
-    for name, page in content.PAGES.items():
+    published = pieces()
+    for name, page, piece in ([(n, p, None) for n, p in domain_pages().items()]
+                              + [(f"thought-{pc.slug}", piece_page(pc), pc) for pc in published]):
         folder = OUT / page.path if page.path else OUT
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / "index.html").write_text(render_page(name, page), encoding="utf-8")
+        (folder / "index.html").write_text(render_page(name, page, piece), encoding="utf-8")
         print(f"wrote {(folder / 'index.html').relative_to(ROOT)}")
     # GitHub Pages: serve the files as they are (no Jekyll processing).
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
     (OUT / "CNAME").write_text(CUSTOM_DOMAIN, encoding="utf-8")
     # Search engines: the list of pages, and permission to read them all.
-    urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in content.PAGES.values())
+    urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in domain_pages().values())
+    urls += "".join(f"  <url><loc>{page_url(piece_page(pc))}</loc><lastmod>{pc.day.isoformat()}</lastmod></url>\n"
+                    for pc in published)
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
                                      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                      f"{urls}</urlset>\n", encoding="utf-8")

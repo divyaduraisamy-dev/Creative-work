@@ -38,7 +38,8 @@ def make_page(name: str):
         # Header on every page: logo (home) | About · Work · KOVU · Contact | LinkedIn | colour toggle
         fx.site_header(linkedin=content.LINKEDIN, email_code=content.EMAIL_CODE, page=name, pages=st_pages)
         for block in content.PAGES[name].blocks:
-            render(block)
+            if content.shown_on(block, "streamlit"):
+                render(block)
 
     page.__name__ = f"{name}_page"
     return page
@@ -47,7 +48,9 @@ def make_page(name: str):
 # Pages. The header switches between them with the logo transition; Streamlit's own page menu
 # stays hidden. Work lives at /work, KOVU at /kovu.
 st_pages = {}
-for index, (name, page) in enumerate(content.PAGES.items()):
+# Pages marked only="domain" (Thoughts) are left out here.
+streamlit_pages = {n: p for n, p in content.PAGES.items() if content.shown_on(p, "streamlit")}
+for index, (name, page) in enumerate(streamlit_pages.items()):
     st_pages[name] = st.Page(make_page(name), title=page.title, url_path=page.path or None, default=index == 0)
 nav = st.navigation(list(st_pages.values()), position="hidden")
 
