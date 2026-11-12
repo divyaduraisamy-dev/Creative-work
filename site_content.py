@@ -8,7 +8,8 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Title("...")                 big page heading
     Text("...")                  a paragraph
     Heading("...", anchor="x")   section heading; anchor="about" is where the About link scrolls
-    Photo()                      the edge-to-edge photo (Photo(image="file.jpg", alt="...") for another)
+    Photo()                      the edge-to-edge photo (Photo(image="file.jpg", alt="...") for another;
+                                 title=, date=, place= add a caption on the domain)
     Pet(caption="...")           KOVU, grabbable; Pet(caption="", still=True) for a still drawing
     Torch(hint="...")            hold-and-drag light around KOVU (put it right after Pet)
                                  frames="folder" plays that folder's pictures (in name order) each press
@@ -60,6 +61,10 @@ class Heading:
 class Photo:
     image: str | None = None  # file path; None = ui-scrapbook/custom-features/assets/home-photo.jpg
     alt: str = "A person in pink walking across a green field toward tall trees under a blue sky"
+    # Caption under the photo, divyaduraisamy.org only (the Streamlit site shows the photo alone).
+    title: str = ""           # name of the work
+    date: str = ""            # year-month-day it was taken
+    place: str = ""
 
 
 @dataclass
@@ -132,8 +137,8 @@ class Page:
 PAGES = {
     "home": Page("Welcome!", "", [
         Title("Welcome to the site of Divya Duraisamy"),
-        Text("I wanted a space to display my creative work and thoughts."),
-        Photo(),
+        Text("I want this to be a space for me to display my creative work and thoughts."),
+        Photo(title="Afternoon Stroll", date="2021-06-20", place="Genesee Valley Park, Rochester, New York"),
         Heading("I look forward to engaging your mind"),
         Text("Take your time to work through the page and learn more about me."),
         Heading("About", anchor="about"),

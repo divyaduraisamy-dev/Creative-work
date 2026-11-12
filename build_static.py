@@ -218,6 +218,12 @@ PAGE_CSS = """
   .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
   .s-piece__back a { color: inherit; }
 
+  /* Photo caption (home): sits under the edge-to-edge photo, lined up with the page text. */
+  .s-photo__caption { padding: 0.6rem 5rem 0; font-size: 0.875rem; line-height: 1.5; }
+  .s-photo__title { display: block; font: 400 1.25rem/1.25 "Londrina Solid", sans-serif; font-style: normal; }
+  .s-photo__details { display: block; opacity: 0.7; }
+  @media (max-width: 640px) { .s-photo__caption { padding: 0.5rem 1rem 0; } }
+
   /* Comic: panels in reading order, three across (two on tablets, one on phones). The drawing is
      a mask over the page's text colour, so the lines are cream on black or black on cream. */
   .s-comic { padding-top: 2rem; }
@@ -330,6 +336,15 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
             markup = component("custom-features/home-photo.html")
             markup = markup.replace('src="assets/home-photo.jpg"', f'src="{prefix}{src}"')
             markup = re.sub(r'alt="[^"]*"', f'alt="{esc(block.alt)}"', markup, count=1)
+            details = [long_date(date.fromisoformat(block.date))] if block.date else []
+            details += [block.place] if block.place else []
+            if block.title or details:
+                caption = (f'<cite class="s-photo__title">{esc(block.title)}</cite>' if block.title else "")
+                if details:
+                    when = block.date and f'<time datetime="{esc(block.date)}">{esc(details[0])}</time>'
+                    rest = [when] + [esc(d) for d in details[1:]] if block.date else [esc(d) for d in details]
+                    caption += f'<span class="s-photo__details">{" · ".join(rest)}</span>'
+                markup = markup.replace("</figure>", f'<figcaption class="s-photo__caption">{caption}</figcaption></figure>', 1)
             body.append(once("photo", markup))
         elif isinstance(block, Pet):
             src = copy_asset(CUSTOM / "assets" / "kovu-placeholder.png")
