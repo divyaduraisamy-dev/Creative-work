@@ -2088,8 +2088,9 @@ const CustomPasswordGate = {
     const opts = Object.assign({ hash: "", salt: "", iterations: 200000, home: "./" }, options);
     const root = document.documentElement;
     if (!this.pending()) { el.remove(); return null; }
+    // Fetch the handwriting font now, so the first letters typed are already in it.
+    if (document.fonts) document.fonts.load('1em "Divyas Handwriting"').catch(() => {});
 
-    if (getComputedStyle(el).getPropertyValue("--gate-box").trim() !== "none") el.dataset.hasBox = "";
     // Everything behind the gate is out of reach (keyboard and screen readers) until it is answered.
     const behind = Array.from(document.body.children).filter((n) => n !== el && n.id !== "c-logo-loader");
     behind.forEach((n) => { n.inert = true; });

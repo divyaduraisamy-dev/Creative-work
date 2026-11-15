@@ -386,6 +386,15 @@ def next_links(name: str, pages: dict[str, str]) -> tuple[str, list[str]]:
             ['CustomNextLink.init("s-next");', 'CustomNextLink.init("s-next-guest");'])
 
 
+def gate_markup(prefix: str) -> str:
+    """The password page, pointing at the box drawing and the handwriting font."""
+    box = prefix + copy_asset(CUSTOM / "assets" / "password-box.webp")
+    font = prefix + copy_asset(CUSTOM / "assets" / "fonts" / "divya-handwriting" / "divya-handwriting.woff2", "fonts")
+    return (component("custom-features/password-gate.html")
+            .replace("url('assets/password-box.webp')", f"url('{box}')")
+            .replace("url('assets/fonts/divya-handwriting.woff2')", f"url('{font}')"))
+
+
 def header_markup() -> str:
     """The header, with data-members on links to members-only pages (hidden from guests)."""
     members = {n for n, p in domain_pages().items() if p.members}
@@ -602,7 +611,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 </head>
 <body>
 {component("custom-features/logo-loader.html")}
-{component("custom-features/password-gate.html")}
+{gate_markup(prefix)}
 {header_markup()}
 <main class="s-main">
 {chr(10).join(body)}

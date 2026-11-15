@@ -205,11 +205,21 @@
   <p class="c-loader__hint" aria-hidden="true">click to skip</p>
 </div>
 <style>
+  @font-face {
+    font-family: "Divyas Handwriting";
+    src: url('assets/fonts/divya-handwriting.woff2') format("woff2");
+    font-display: swap;
+  }
   .c-gate {
     --color-bg: #000000;
     --color-text: #f2ead3;
-    --gate-type-font: "Rubik", sans-serif;   /* your handwriting font goes here */
-    --gate-box: none;                         /* url('...') for the hand-drawn box */
+    --font-hand: "Divyas Handwriting", "Rubik", sans-serif;
+    /* the drawn inner box, as shares of the drawing: left, top, right, bottom */
+    --gate-field-left: 10%;
+    --gate-field-top: 59.4%;
+    --gate-field-right: 12%;
+    --gate-field-bottom: 18.8%;
+    --gate-go-space: 3.5rem;
 
     position: fixed;
     inset: 0;
@@ -227,43 +237,68 @@
   @keyframes c-gate-out { to { opacity: 0; transform: translateY(-2%); } }
   @media (prefers-reduced-motion: reduce) { .c-gate.is-leaving { animation-duration: 0.01s; } }
 
-  .c-gate__form { width: min(30rem, 100%); text-align: center; }
-  .c-gate__label {
-    display: block;
-    margin-bottom: 1.25rem;
-    font: 400 clamp(2rem, 6vw, 2.75rem)/1.2 "Londrina Solid", sans-serif;
+  /* The drawing, shifted left a little so "go" fits on its right. */
+  .c-gate__form {
+    width: min(38rem, 100%);
+    padding-right: var(--gate-go-space);
   }
-  .c-gate__box {
-    display: block;
-    padding: 0.9rem 1.1rem;
-    border: 1.5px solid currentColor;
-    border-radius: 14px 18px 12px 20px / 18px 12px 20px 14px;  /* a little uneven, like drawn */
-    background: var(--gate-box) center / 100% 100% no-repeat;
+  .c-gate__card {
+    position: relative;
+    aspect-ratio: 1200 / 707;
+    container-type: inline-size;
   }
-  .c-gate[data-has-box] .c-gate__box { border-color: transparent; }
+  .c-gate__card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    -webkit-mask: url('assets/password-box.webp') center / 100% 100% no-repeat;
+    mask: url('assets/password-box.webp') center / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+  .c-gate__label {  /* the drawing already says it; this is for screen readers */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
   .c-gate__input {
-    width: 100%;
+    position: absolute;
+    left: var(--gate-field-left);
+    top: var(--gate-field-top);
+    right: var(--gate-field-right);
+    bottom: var(--gate-field-bottom);
+    width: auto;
+    margin: 0;
+    padding: 0 4cqi;
     border: 0;
     outline: 0;
+    border-radius: 0;
     background: transparent;
     color: inherit;
-    font: 400 1.6rem/1.3 var(--gate-type-font);
+    font: 400 7.2cqi/1 var(--font-hand);
     text-align: center;
     caret-color: currentColor;
+    -webkit-appearance: none;
+    appearance: none;
   }
-  .c-gate__box:focus-within { outline: 2px solid currentColor; outline-offset: 4px; }
-  .c-gate__enter {
-    margin-top: 1.25rem;
-    padding: 0.4rem 1.4rem;
-    border: 1.5px solid currentColor;
-    border-radius: 999px;
+  .c-gate__go {
+    position: absolute;
+    left: calc(100% + 0.6rem);
+    top: calc((var(--gate-field-top) + 100% - var(--gate-field-bottom)) / 2);
+    transform: translateY(-50%);
+    padding: 0.1em 0.3em 0.25em;
+    border: 0;
     background: transparent;
     color: inherit;
-    font: 400 1rem/1.4 "Rubik", sans-serif;
+    font: 400 clamp(1.9rem, 8cqi, 3rem)/1 var(--font-hand);
     cursor: pointer;
   }
-  .c-gate__enter:hover, .c-gate__enter:focus-visible { background: var(--color-text); color: var(--color-bg); }
-  .c-gate__enter:disabled { opacity: 0.5; cursor: default; }
+  .c-gate__go:hover, .c-gate__go:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
+  .c-gate__go:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 6px; }
+  .c-gate__go:disabled { opacity: 0.5; cursor: default; }
 
   /* Guests: members-only pieces are hidden; guest-only pieces (e.g. a different Next link) appear. */
   :root[data-gate="guest"] [data-members] { display: none !important; }
@@ -271,12 +306,12 @@
 </style>
 <div class="c-gate" id="c-password-gate" role="dialog" aria-modal="true" aria-labelledby="c-gate-label">
   <form class="c-gate__form" data-gate-form autocomplete="off">
-    <label class="c-gate__label" id="c-gate-label" for="c-gate-input">Enter password</label>
-    <span class="c-gate__box">
+    <div class="c-gate__card">
+      <label class="c-gate__label" id="c-gate-label" for="c-gate-input">Enter password</label>
       <input class="c-gate__input" id="c-gate-input" data-gate-input type="text" name="phrase"
-             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
-    </span>
-    <button class="c-gate__enter" type="submit">Enter</button>
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      <button class="c-gate__go" type="submit">go</button>
+    </div>
   </form>
 </div>
 <style>
