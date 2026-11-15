@@ -2098,6 +2098,23 @@ const CustomPasswordGate = {
 
     const form = el.querySelector("[data-gate-form]");
     const input = el.querySelector("[data-gate-input]");
+    // Colour switch: the word says the colours it switches to.
+    const themeBtn = el.querySelector("[data-gate-theme]");
+    if (themeBtn) {
+      CustomSiteTheme.init();
+      const word = themeBtn.querySelector("[data-gate-theme-word]");
+      const label = () => {
+        const next = CustomSiteTheme.other();
+        word.textContent = next;
+        themeBtn.setAttribute("aria-label", `Switch to ${next} colours`);
+      };
+      label();
+      document.addEventListener("sitetheme:change", label);
+      themeBtn.addEventListener("click", (e) => {
+        CustomSiteTheme.toggle({ animate: false });  // the page's own colours fade (password-gate.html)
+        if (e.detail > 0) input.focus({ preventScroll: true });  // mouse/tap: keep typing where you were
+      });
+    }
     const button = form.querySelector("button");
     const focus = () => input.focus({ preventScroll: true });
     if (root.dataset.logoLoader === "playing") document.addEventListener("logoloader:done", focus, { once: true });

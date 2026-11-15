@@ -387,12 +387,16 @@ def next_links(name: str, pages: dict[str, str]) -> tuple[str, list[str]]:
 
 
 def gate_markup(prefix: str) -> str:
-    """The password page, pointing at the box drawing and the handwriting font."""
+    """The password page, pointing at the box drawings and the handwriting font."""
     box = prefix + copy_asset(CUSTOM / "assets" / "password-box.webp")
     font = prefix + copy_asset(CUSTOM / "assets" / "fonts" / "divya-handwriting" / "divya-handwriting.woff2", "fonts")
     return (component("custom-features/password-gate.html")
             .replace("url('assets/password-box.webp')", f"url('{box}')")
-            .replace("url('assets/fonts/divya-handwriting.woff2')", f"url('{font}')"))
+            .replace("url('assets/fonts/divya-handwriting.woff2')", f"url('{font}')")
+            .replace("url('assets/logo.svg')", f"url('{prefix}assets/logo.svg')")
+            .replace("url('assets/go-box.webp')", f"url('{prefix + copy_asset(CUSTOM / 'assets' / 'go-box.webp')}')")
+            .replace("url('assets/go-box-filled.webp')",
+                     f"url('{prefix + copy_asset(CUSTOM / 'assets' / 'go-box-filled.webp')}')"))
 
 
 def header_markup() -> str:
@@ -582,7 +586,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
     }
     gate_options = {"hash": gate_hash(), "salt": GATE_SALT, "iterations": GATE_ITERATIONS, "home": pages["home"]}
     scripts = [
-        'CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: false } : {});',
+        'CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: "c-gate-logo" } : {});',
         f'CustomPasswordGate.init("c-password-gate", {json.dumps(gate_options)});',
         f'CustomSiteHeader.init("c-site-header", {json.dumps(header_options)});',
         *start,

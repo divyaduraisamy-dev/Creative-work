@@ -219,14 +219,16 @@
     --gate-field-top: 59.4%;
     --gate-field-right: 12%;
     --gate-field-bottom: 18.8%;
-    --gate-go-space: 3.5rem;
 
     position: fixed;
     inset: 0;
     z-index: 2147482900;  /* under the logo loader, over everything else */
     display: grid;
-    place-items: center;
-    padding: 1rem;
+    grid-template-rows: auto 1fr;
+    justify-items: center;
+    align-items: center;
+    padding: clamp(1rem, 4vh, 2.25rem) 1rem 1rem;
+    overflow-y: auto;
     background: var(--color-bg);
     color: var(--color-text);
     font-family: "Rubik", sans-serif;
@@ -237,11 +239,8 @@
   @keyframes c-gate-out { to { opacity: 0; transform: translateY(-2%); } }
   @media (prefers-reduced-motion: reduce) { .c-gate.is-leaving { animation-duration: 0.01s; } }
 
-  /* The drawing, shifted left a little so "go" fits on its right. */
-  .c-gate__form {
-    width: min(38rem, 100%);
-    padding-right: var(--gate-go-space);
-  }
+  /* On short screens the drawing shrinks so the switch, drawing and "go" all fit. */
+  .c-gate__form { width: min(38rem, 100%, (100vh - 18rem - 20vh) * 1.7); min-width: min(16rem, 100%); }
   .c-gate__card {
     position: relative;
     aspect-ratio: 1200 / 707;
@@ -284,34 +283,91 @@
     -webkit-appearance: none;
     appearance: none;
   }
-  .c-gate__go {
-    position: absolute;
-    left: calc(100% + 0.6rem);
-    top: calc((var(--gate-field-top) + 100% - var(--gate-field-bottom)) / 2);
-    transform: translateY(-50%);
-    padding: 0.1em 0.3em 0.25em;
+  /* Drawn buttons ("go" under the drawing, the colour switch at the top): a box made from the
+     inner box's linework (assets/go-box.webp; go-box-filled.webp for the fill). Hovering with a
+     mouse, keyboard focus or pressing fills the box with the text colour and turns the word the
+     page colour. */
+  .c-gate__btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 292 / 102;
+    padding: 0 0 0.15em;
     border: 0;
     background: transparent;
     color: inherit;
-    font: 400 clamp(1.9rem, 8cqi, 3rem)/1 var(--font-hand);
+    font: 400 1.9rem/1 var(--font-hand);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  .c-gate__go:hover, .c-gate__go:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
-  .c-gate__go:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 6px; }
-  .c-gate__go:disabled { opacity: 0.5; cursor: default; }
+  .c-gate__btn::before, .c-gate__btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    -webkit-mask: url('../../assets/go-box.webp') center / 100% 100% no-repeat;
+    mask: url('../../assets/go-box.webp') center / 100% 100% no-repeat;
+  }
+  .c-gate__btn::after {
+    -webkit-mask-image: url('../../assets/go-box-filled.webp');
+    mask-image: url('../../assets/go-box-filled.webp');
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .c-gate__btn span { position: relative; z-index: 1; transition: color 0.15s ease; }
+  .c-gate__btn:focus-visible::after, .c-gate__btn:active::after { opacity: 1; }
+  .c-gate__btn:focus-visible span, .c-gate__btn:active span { color: var(--color-bg); }
+  @media (hover: hover) {  /* phones: no stuck fill after a tap */
+    .c-gate__btn:hover::after { opacity: 1; }
+    .c-gate__btn:hover span { color: var(--color-bg); }
+  }
+  .c-gate__btn:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; border-radius: 10px; }
+  .c-gate__btn:disabled { opacity: 0.5; cursor: default; }
+  @media (prefers-reduced-motion: reduce) { .c-gate__btn::after, .c-gate__btn span { transition: none; } }
+
+  .c-gate__go {
+    width: clamp(10rem, 40%, 14rem);
+    margin: 1.75rem auto 0;
+    font-size: clamp(2.3rem, 7vw, 3.1rem);
+  }
+
+  /* Top of the page: your logo (the opening logo glides into it), then the colour switch, which
+     says the colours it switches to, with a note underneath. */
+  .c-gate__logo {
+    display: block;
+    width: clamp(4.5rem, 16vh, 8.5rem);  /* the visitor's first look at the site: big */
+    aspect-ratio: 1037 / 1157;
+    margin-bottom: clamp(0.5rem, 2vh, 1.25rem);
+    background: currentColor;
+    -webkit-mask: url('../../assets/logo.svg') center / contain no-repeat;
+    mask: url('../../assets/logo.svg') center / contain no-repeat;
+  }
+  .c-gate__theme {
+    display: grid;
+    justify-items: center;
+    gap: 0.35rem;
+  }
+  .c-gate__theme-btn { width: clamp(7.5rem, 22vw, 9rem); font-size: clamp(1.7rem, 5vw, 2.1rem); }
+  .c-gate__note { margin: 0; font: 400 1.25rem/1.1 var(--font-hand); opacity: 0.8; white-space: nowrap; }
+  .c-gate, .c-gate__btn::before { transition: background-color 0.3s ease, color 0.3s ease; }
 
   /* Guests: members-only pieces are hidden; guest-only pieces (e.g. a different Next link) appear. */
   :root[data-gate="guest"] [data-members] { display: none !important; }
   :root:not([data-gate="guest"]) [data-guest-only] { display: none !important; }
 </style>
 <div class="c-gate" id="c-password-gate" role="dialog" aria-modal="true" aria-labelledby="c-gate-label">
+  <div class="c-gate__theme" id="c-gate-logo">
+    <span class="c-gate__logo" data-logo role="img" aria-label="Divya Duraisamy"></span>
+    <button class="c-gate__btn c-gate__theme-btn" type="button" data-gate-theme aria-label="Switch to light colours"><span data-gate-theme-word>light</span></button>
+    <p class="c-gate__note" aria-hidden="true">switch colours</p>
+  </div>
   <form class="c-gate__form" data-gate-form autocomplete="off">
     <div class="c-gate__card">
       <label class="c-gate__label" id="c-gate-label" for="c-gate-input">Enter password</label>
       <input class="c-gate__input" id="c-gate-input" data-gate-input type="text" name="phrase"
              autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
-      <button class="c-gate__go" type="submit">go</button>
     </div>
+    <button class="c-gate__btn c-gate__go" type="submit"><span>go</span></button>
   </form>
 </div>
 <style>
@@ -725,7 +781,7 @@
 <script src="../../assets/js/wodniack-interactions.js"></script>
 <script src="../../assets/js/interactions.js"></script>
 <script>
-CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: false } : {});
+CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: "c-gate-logo" } : {});
 CustomPasswordGate.init("c-password-gate", {"hash": "e7ce5365ab68cda9271032c5d95b2f5034958869a0438a8e31fae9b48abed77f", "salt": "divyaduraisamy.org password page", "iterations": 200000, "home": "../../"});
 CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "thought-perspective", "pages": {"home": "../../", "work": "../../work/", "moments": "../../moments/", "kovu": "../../kovu/", "thoughts": "../../thoughts/"}});
 WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");
