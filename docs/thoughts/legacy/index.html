@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en" data-site-theme="dark" data-home="../../">
+<html lang="en" data-site-theme="dark" data-home="../../" data-members-page>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Legacy · Divya Duraisamy</title>
-
+<meta name="robots" content="noindex">
 <meta name="description" content="Who decides what actions live on in history?">
 <link rel="canonical" href="https://divyaduraisamy.org/thoughts/legacy/">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Legacy", "datePublished": "2026-09-29", "description": "Who decides what actions live on in history?", "url": "https://divyaduraisamy.org/thoughts/legacy/", "author": {"@type": "Person", "name": "Divya Duraisamy", "url": "https://divyaduraisamy.org/"}}</script>
@@ -331,6 +331,20 @@
     font-size: clamp(2.3rem, 7vw, 3.1rem);
   }
 
+  /* After answering: a line in your handwriting takes the place of "go" (where they're headed). */
+  .c-gate__message {
+    display: none;
+    margin: 1.75rem 0 0;
+    min-height: 1.2em;
+    font: 400 clamp(1.5rem, 5.5vw, 2.2rem)/1.2 var(--font-hand);
+    text-align: center;
+    text-wrap: balance;
+  }
+  .c-gate.is-answered .c-gate__go { display: none; }
+  .c-gate.is-answered .c-gate__message { display: block; animation: c-gate-say 0.35s ease both; }
+  @keyframes c-gate-say { from { opacity: 0; transform: translateY(6px); } }
+  @media (prefers-reduced-motion: reduce) { .c-gate.is-answered .c-gate__message { animation: none; } }
+
   /* Top of the page: your logo (the opening logo glides into it), then the colour switch, which
      says the colours it switches to, with a note underneath. */
   .c-gate__logo {
@@ -368,6 +382,7 @@
              autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
     </div>
     <button class="c-gate__btn c-gate__go" type="submit"><span>go</span></button>
+    <p class="c-gate__message" data-gate-message role="status" aria-live="polite"></p>
   </form>
 </div>
 <style>
@@ -718,7 +733,7 @@
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
       <a data-members class="c-site-header__link" href="moments" data-go="moments">Moments</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
-      <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
+      <a data-members class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
     </nav>
     <a class="c-site-header__cell c-site-header__icon" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" data-linkedin>in</a>

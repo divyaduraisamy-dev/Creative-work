@@ -271,7 +271,7 @@ PAGES = {
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work."),
         ThoughtsList(),
         Waves(),
-    ], only="domain"),
+    ], only="domain", members=True),
 }
 
 

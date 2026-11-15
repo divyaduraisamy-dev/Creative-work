@@ -2057,8 +2057,9 @@ const CustomNextLink = {
  * The password page (password-gate.html, divyaduraisamy.org). Shown once per browser session until
  * the visitor enters something. The phrase is compared as a PBKDF2-SHA256 hash (options.hash, made
  * by build_static.py from .streamlit/secrets.toml), so the page never contains the phrase itself.
- * Right phrase: <html data-gate="full">. Anything else: data-gate="guest" (members-only pieces are
- * hidden by CSS; on a members-only page the visitor is sent home). Typing is compared lowercased,
+ * After answering, a handwritten line replaces "go" for options.messageMs: right phrase, "welcome to
+ * behind the scenes", then the page they opened with <html data-gate="full">; anything else, "taking
+ * you to the homepage…", then the homepage with data-gate="guest" (members-only pieces hidden by CSS). Typing is compared lowercased,
  * with spaces trimmed and runs of spaces made single. This is a playful gate, not real security.
  */
 const CustomPasswordGate = {
@@ -2085,7 +2086,12 @@ const CustomPasswordGate = {
   init(target = "c-password-gate", options = {}) {
     const el = CustomEnv.resolve(target);
     if (!CustomEnv.claim(el)) return null;
-    const opts = Object.assign({ hash: "", salt: "", iterations: 200000, home: "./" }, options);
+    const opts = Object.assign({
+      hash: "", salt: "", iterations: 200000, home: "./",
+      welcome: "welcome to behind the scenes",   // right phrase
+      toHome: "taking you to the homepage…",      // anything else
+      messageMs: 1500,                            // how long the line shows before moving on
+    }, options);
     const root = document.documentElement;
     if (!this.pending()) { el.remove(); return null; }
     // Fetch the handwriting font now, so the first letters typed are already in it.
@@ -2130,7 +2136,18 @@ const CustomPasswordGate = {
         if (opts.hash && (await this.hash(text, opts.salt, opts.iterations)) === opts.hash) verdict = "full";
       } catch (err) { /* no crypto.subtle (plain http): guest */ }
       CustomEnv.session.set(this.storageKey, verdict);
-      if (verdict === "guest" && root.hasAttribute("data-members-page")) {
+
+      // Say where they're headed, in the handwriting, in place of "go"; then go there.
+      // Wrong phrase: the homepage (guest view). Right phrase: the page they opened (full site).
+      input.readOnly = true;
+      if (themeBtn) themeBtn.disabled = true;
+      const message = el.querySelector("[data-gate-message]");
+      if (message) message.textContent = verdict === "full" ? opts.welcome : opts.toHome;
+      el.classList.add("is-answered");
+      await new Promise((resolve) => setTimeout(resolve, opts.messageMs));
+
+      const onHome = new URL(opts.home, window.location.href).pathname === window.location.pathname;
+      if (verdict === "guest" && !onHome) {
         window.location.replace(opts.home);
         return;
       }
@@ -2139,7 +2156,7 @@ const CustomPasswordGate = {
       const done = () => { root.dataset.gate = verdict; el.remove(); };
       if (CustomEnv.reducedMotion) { done(); return; }
       el.classList.add("is-leaving");
-      el.addEventListener("animationend", done, { once: true });
+      el.addEventListener("animationend", (ev) => { if (ev.target === el) done(); });
     });
     return el;
   },
