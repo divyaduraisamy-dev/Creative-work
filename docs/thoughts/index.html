@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en" data-site-theme="dark">
+<html lang="en" data-site-theme="dark" data-home="../">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Thoughts · Divya Duraisamy</title>
+
 <meta name="description" content="Thought pieces by Divya Duraisamy on philosophy, ethics and reflection, and how that perspective changes over time.">
 <link rel="canonical" href="https://divyaduraisamy.org/thoughts/">
 <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
@@ -17,6 +18,9 @@
   try {
     if (sessionStorage.getItem("custom-logo-loader-seen")) root.dataset.logoLoaderSeen = "";
     if (sessionStorage.getItem("site-page-arrive")) root.dataset.arriving = "";
+    var g = sessionStorage.getItem("site-gate");
+    if (g === "full" || g === "guest") root.dataset.gate = g;
+    if (g === "guest" && root.hasAttribute("data-members-page")) location.replace(root.dataset.home);
   } catch (e) {}
 })();
 </script>
@@ -198,6 +202,81 @@
     </svg>
 
   <p class="c-loader__hint" aria-hidden="true">click to skip</p>
+</div>
+<style>
+  .c-gate {
+    --color-bg: #000000;
+    --color-text: #f2ead3;
+    --gate-type-font: "Rubik", sans-serif;   /* your handwriting font goes here */
+    --gate-box: none;                         /* url('...') for the hand-drawn box */
+
+    position: fixed;
+    inset: 0;
+    z-index: 2147482900;  /* under the logo loader, over everything else */
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: "Rubik", sans-serif;
+  }
+  :root[data-site-theme="light"] .c-gate { --color-bg: #f2ead3; --color-text: #000000; }
+  :root[data-gate] .c-gate { display: none; }
+  .c-gate.is-leaving { animation: c-gate-out 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+  @keyframes c-gate-out { to { opacity: 0; transform: translateY(-2%); } }
+  @media (prefers-reduced-motion: reduce) { .c-gate.is-leaving { animation-duration: 0.01s; } }
+
+  .c-gate__form { width: min(30rem, 100%); text-align: center; }
+  .c-gate__label {
+    display: block;
+    margin-bottom: 1.25rem;
+    font: 400 clamp(2rem, 6vw, 2.75rem)/1.2 "Londrina Solid", sans-serif;
+  }
+  .c-gate__box {
+    display: block;
+    padding: 0.9rem 1.1rem;
+    border: 1.5px solid currentColor;
+    border-radius: 14px 18px 12px 20px / 18px 12px 20px 14px;  /* a little uneven, like drawn */
+    background: var(--gate-box) center / 100% 100% no-repeat;
+  }
+  .c-gate[data-has-box] .c-gate__box { border-color: transparent; }
+  .c-gate__input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: 400 1.6rem/1.3 var(--gate-type-font);
+    text-align: center;
+    caret-color: currentColor;
+  }
+  .c-gate__box:focus-within { outline: 2px solid currentColor; outline-offset: 4px; }
+  .c-gate__enter {
+    margin-top: 1.25rem;
+    padding: 0.4rem 1.4rem;
+    border: 1.5px solid currentColor;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: 400 1rem/1.4 "Rubik", sans-serif;
+    cursor: pointer;
+  }
+  .c-gate__enter:hover, .c-gate__enter:focus-visible { background: var(--color-text); color: var(--color-bg); }
+  .c-gate__enter:disabled { opacity: 0.5; cursor: default; }
+
+  /* Guests: members-only pieces are hidden; guest-only pieces (e.g. a different Next link) appear. */
+  :root[data-gate="guest"] [data-members] { display: none !important; }
+  :root:not([data-gate="guest"]) [data-guest-only] { display: none !important; }
+</style>
+<div class="c-gate" id="c-password-gate" role="dialog" aria-modal="true" aria-labelledby="c-gate-label">
+  <form class="c-gate__form" data-gate-form autocomplete="off">
+    <label class="c-gate__label" id="c-gate-label" for="c-gate-input">Enter password</label>
+    <span class="c-gate__box">
+      <input class="c-gate__input" id="c-gate-input" data-gate-input type="text" name="phrase"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    </span>
+    <button class="c-gate__enter" type="submit">Enter</button>
+  </form>
 </div>
 <style>
   .c-site-header {
@@ -545,7 +624,7 @@
     <nav class="c-site-header__cell c-site-header__menu" aria-label="Main">
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
-      <a class="c-site-header__link" href="moments" data-go="moments">Moments</a>
+      <a data-members class="c-site-header__link" href="moments" data-go="moments">Moments</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
       <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
@@ -613,7 +692,8 @@
 <script src="../assets/js/wodniack-interactions.js"></script>
 <script src="../assets/js/interactions.js"></script>
 <script>
-CustomLogoLoader.init("c-logo-loader");
+CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: false } : {});
+CustomPasswordGate.init("c-password-gate", {"hash": "8b88ccc998e8c56cbff4443f1dd33e6c063c42985164f2bd16806a6215e4739a", "salt": "divyaduraisamy.org password page", "iterations": 200000, "home": "../"});
 CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "thoughts", "pages": {"home": "../", "work": "../work/", "moments": "../moments/", "kovu": "../kovu/", "thoughts": "../thoughts/"}});
 CustomNextLink.init("s-next");
 WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");

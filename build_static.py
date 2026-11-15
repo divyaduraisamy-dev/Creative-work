@@ -20,7 +20,9 @@ from __future__ import annotations
 import html
 import json
 import re
+import hashlib
 import shutil
+import tomllib
 from functools import cache
 from dataclasses import dataclass
 from datetime import date
@@ -41,6 +43,29 @@ CUSTOM_DOMAIN = "divyaduraisamy.org"
 # Search engines: the domain version puts the owner's name in each tab title.
 # The Streamlit site keeps the plain titles from site_content.py.
 OWNER_NAME = "Divya Duraisamy"
+
+# Password page: the phrase is read from .streamlit/secrets.toml (site_phrase = "..."), which Git
+# ignores. Only a PBKDF2 hash of it goes into the pages. Without it, a placeholder is used.
+SECRETS = ROOT / ".streamlit" / "secrets.toml"
+GATE_PLACEHOLDER = "let me in"
+GATE_SALT = "divyaduraisamy.org password page"
+GATE_ITERATIONS = 200_000
+
+
+def normalize_phrase(text: str) -> str:
+    """Same as CustomPasswordGate.normalize: lowercased, trimmed, single spaces."""
+    return " ".join(text.lower().split())
+
+
+@cache
+def gate_hash() -> str:
+    phrase = ""
+    if SECRETS.exists():
+        phrase = str(tomllib.loads(SECRETS.read_text(encoding="utf-8")).get("site_phrase", ""))
+    if not normalize_phrase(phrase):
+        print(f'WARNING: no site_phrase in .streamlit/secrets.toml; the password page uses the placeholder "{GATE_PLACEHOLDER}".')
+        phrase = GATE_PLACEHOLDER
+    return hashlib.pbkdf2_hmac("sha256", normalize_phrase(phrase).encode(), GATE_SALT.encode(), GATE_ITERATIONS).hex()
 SITE_URL = f"https://{CUSTOM_DOMAIN}/"
 # The short summary search engines show under the link (never shown on the page), by page path.
 DESCRIPTIONS = {
@@ -112,7 +137,8 @@ def long_date(day: date) -> str:
 
 def piece_page(piece: Piece) -> Page:
     """The page for one piece (its blocks are filled in by render_page)."""
-    return Page(piece.title, f"thoughts/{piece.slug}", [Waves()], only="domain")
+    return Page(piece.title, f"thoughts/{piece.slug}", [Waves()], only="domain",
+                members=content.PAGES["thoughts"].members)
 
 
 def page_url(page: Page) -> str:
@@ -298,7 +324,8 @@ PAGE_CSS = """
   :root[data-arriving][data-site-theme="light"] body::after { background: rgba(242, 234, 211, 0.35); }
 """
 
-# Runs before the page paints: colour scheme, loader already seen, arriving mid-transition.
+# Runs before the page paints: colour scheme, loader already seen, arriving mid-transition,
+# password page already answered (guests on a members-only page are sent home).
 HEAD_JS = """
 (function () {
   var root = document.documentElement;
@@ -306,6 +333,9 @@ HEAD_JS = """
   try {
     if (sessionStorage.getItem("custom-logo-loader-seen")) root.dataset.logoLoaderSeen = "";
     if (sessionStorage.getItem("site-page-arrive")) root.dataset.arriving = "";
+    var g = sessionStorage.getItem("site-gate");
+    if (g === "full" || g === "guest") root.dataset.gate = g;
+    if (g === "guest" && root.hasAttribute("data-members-page")) location.replace(root.dataset.home);
   } catch (e) {}
 })();
 """
@@ -333,16 +363,34 @@ def image_size(path: Path) -> tuple[int, int]:
         return im.size
 
 
-def next_link(name: str, pages: dict[str, str]) -> str:
-    """The "Next" link at the end of a page: the following page in PAGES order, or Contact after the last."""
-    names = list(domain_pages())
+def next_link(name: str, pages: dict[str, str], guests: bool = False, element_id: str = "s-next", attr: str = "") -> str:
+    """The "Next" link at the end of a page: the following page in PAGES order, or Contact after the last.
+    guests=True skips members-only pages (what a guest from the password page can see)."""
+    names = [n for n, p in domain_pages().items() if not (guests and p.members)]
     after = names[names.index(name) + 1] if name in names and names.index(name) + 1 < len(names) else None
     if after:
         label = domain_pages()[after].title
-        return (f'<p class="s-next-wrap"><a class="s-next" id="s-next" href="{pages[after]}" data-go="{after}">'
+        return (f'<p class="s-next-wrap"{attr}><a class="s-next" id="{element_id}" href="{pages[after]}" data-go="{after}">'
                 f'Next: {esc(label)} <span class="s-next__arrow" aria-hidden="true">→</span></a></p>')
-    return ('<p class="s-next-wrap"><button class="s-next" id="s-next" type="button" data-open-contact>'
+    return (f'<p class="s-next-wrap"{attr}><button class="s-next" id="{element_id}" type="button" data-open-contact>'
             'Next: Contact <span class="s-next__arrow" aria-hidden="true">→</span></button></p>')
+
+
+def next_links(name: str, pages: dict[str, str]) -> tuple[str, list[str]]:
+    """The Next link, plus a guest version when it differs (CSS shows the right one)."""
+    full, guest = next_link(name, pages), next_link(name, pages, guests=True)
+    if full == guest:
+        return full, ['CustomNextLink.init("s-next");']
+    return (next_link(name, pages, attr=" data-members")
+            + next_link(name, pages, guests=True, element_id="s-next-guest", attr=" data-guest-only"),
+            ['CustomNextLink.init("s-next");', 'CustomNextLink.init("s-next-guest");'])
+
+
+def header_markup() -> str:
+    """The header, with data-members on links to members-only pages (hidden from guests)."""
+    members = {n for n, p in domain_pages().items() if p.members}
+    return re.sub(r'<a ([^>]*data-go="([^"]+)")', lambda m: f'<a data-members {m.group(1)}' if m.group(2) in members else m.group(0),
+                  component("custom-features/site-header.html"))
 
 
 def domain_pages() -> dict[str, Page]:
@@ -381,7 +429,8 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                 f'style="--panel: url(\'{prefix}{copy_asset(path, Path(block.folder).name)}\')"></span></li>'
                 for path, alt in zip(content.frame_files(block.folder), block.alts, strict=True))
             day = date.fromisoformat(block.date)
-            body.append(f'<section class="s-comic" aria-labelledby="s-comic-{esc(block.title.lower())}">'
+            members = " data-members" if block.members else ""
+            body.append(f'<section class="s-comic"{members} aria-labelledby="s-comic-{esc(block.title.lower())}">'
                         f'<h2 id="s-comic-{esc(block.title.lower())}">{esc(block.title)}</h2>'
                         f'<p class="s-comic__date"><time datetime="{day.isoformat()}">{long_date(day)}</time></p>'
                         f'<ol class="s-comic__panels">{panels}</ol></section>')
@@ -510,8 +559,9 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
             start.append(f'CustomWalkForecast.init("c-walk-forecast", {json.dumps({"table": table})});')
         elif isinstance(block, Waves):
             if not piece:
-                body.append(next_link(name, pages))
-                start.append('CustomNextLink.init("s-next");')
+                markup, inits = next_links(name, pages)
+                body.append(markup)
+                start.extend(inits)
             body.append(once("waves", component("custom-features/wave-field.html")))
             start.append('WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");')
 
@@ -521,8 +571,10 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
         "page": name,
         "pages": pages,
     }
+    gate_options = {"hash": gate_hash(), "salt": GATE_SALT, "iterations": GATE_ITERATIONS, "home": pages["home"]}
     scripts = [
-        'CustomLogoLoader.init("c-logo-loader");',
+        'CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: false } : {});',
+        f'CustomPasswordGate.init("c-password-gate", {json.dumps(gate_options)});',
         f'CustomSiteHeader.init("c-site-header", {json.dumps(header_options)});',
         *start,
     ]
@@ -534,11 +586,12 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
     script_tags.append(f'<script src="{prefix}assets/js/interactions.js"></script>')
 
     return f"""<!doctype html>
-<html lang="en" data-site-theme="dark">
+<html lang="en" data-site-theme="dark" data-home="{esc(pages["home"])}"{" data-members-page" if page.members else ""}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(OWNER_NAME if page.path == "" else f"{page.title} · {OWNER_NAME}")}</title>
+{'<meta name="robots" content="noindex">' if page.members else ""}
 {search_tags(page, piece)}
 <link rel="icon" href="{prefix}assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -549,7 +602,8 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 </head>
 <body>
 {component("custom-features/logo-loader.html")}
-{component("custom-features/site-header.html")}
+{component("custom-features/password-gate.html")}
+{header_markup()}
 <main class="s-main">
 {chr(10).join(body)}
 </main>
@@ -581,9 +635,10 @@ def main() -> None:
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
     (OUT / "CNAME").write_text(CUSTOM_DOMAIN, encoding="utf-8")
     # Search engines: the list of pages, and permission to read them all.
-    urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in domain_pages().values())
+    # Members-only pages (password page) are left out until they are released.
+    urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in domain_pages().values() if not p.members)
     urls += "".join(f"  <url><loc>{page_url(piece_page(pc))}</loc><lastmod>{pc.day.isoformat()}</lastmod></url>\n"
-                    for pc in published)
+                    for pc in published if not piece_page(pc).members)
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
                                      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                      f"{urls}</urlset>\n", encoding="utf-8")

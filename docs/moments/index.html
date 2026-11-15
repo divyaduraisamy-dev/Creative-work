@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en" data-site-theme="dark">
+<html lang="en" data-site-theme="dark" data-home="../" data-members-page>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Moments · Divya Duraisamy</title>
+<meta name="robots" content="noindex">
 <meta name="description" content="Seen &amp; Captured: illustrations, photos, stories and cartoons by Divya Duraisamy.">
 <link rel="canonical" href="https://divyaduraisamy.org/moments/">
 <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
@@ -17,6 +18,9 @@
   try {
     if (sessionStorage.getItem("custom-logo-loader-seen")) root.dataset.logoLoaderSeen = "";
     if (sessionStorage.getItem("site-page-arrive")) root.dataset.arriving = "";
+    var g = sessionStorage.getItem("site-gate");
+    if (g === "full" || g === "guest") root.dataset.gate = g;
+    if (g === "guest" && root.hasAttribute("data-members-page")) location.replace(root.dataset.home);
   } catch (e) {}
 })();
 </script>
@@ -198,6 +202,81 @@
     </svg>
 
   <p class="c-loader__hint" aria-hidden="true">click to skip</p>
+</div>
+<style>
+  .c-gate {
+    --color-bg: #000000;
+    --color-text: #f2ead3;
+    --gate-type-font: "Rubik", sans-serif;   /* your handwriting font goes here */
+    --gate-box: none;                         /* url('...') for the hand-drawn box */
+
+    position: fixed;
+    inset: 0;
+    z-index: 2147482900;  /* under the logo loader, over everything else */
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: "Rubik", sans-serif;
+  }
+  :root[data-site-theme="light"] .c-gate { --color-bg: #f2ead3; --color-text: #000000; }
+  :root[data-gate] .c-gate { display: none; }
+  .c-gate.is-leaving { animation: c-gate-out 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+  @keyframes c-gate-out { to { opacity: 0; transform: translateY(-2%); } }
+  @media (prefers-reduced-motion: reduce) { .c-gate.is-leaving { animation-duration: 0.01s; } }
+
+  .c-gate__form { width: min(30rem, 100%); text-align: center; }
+  .c-gate__label {
+    display: block;
+    margin-bottom: 1.25rem;
+    font: 400 clamp(2rem, 6vw, 2.75rem)/1.2 "Londrina Solid", sans-serif;
+  }
+  .c-gate__box {
+    display: block;
+    padding: 0.9rem 1.1rem;
+    border: 1.5px solid currentColor;
+    border-radius: 14px 18px 12px 20px / 18px 12px 20px 14px;  /* a little uneven, like drawn */
+    background: var(--gate-box) center / 100% 100% no-repeat;
+  }
+  .c-gate[data-has-box] .c-gate__box { border-color: transparent; }
+  .c-gate__input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: 400 1.6rem/1.3 var(--gate-type-font);
+    text-align: center;
+    caret-color: currentColor;
+  }
+  .c-gate__box:focus-within { outline: 2px solid currentColor; outline-offset: 4px; }
+  .c-gate__enter {
+    margin-top: 1.25rem;
+    padding: 0.4rem 1.4rem;
+    border: 1.5px solid currentColor;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: 400 1rem/1.4 "Rubik", sans-serif;
+    cursor: pointer;
+  }
+  .c-gate__enter:hover, .c-gate__enter:focus-visible { background: var(--color-text); color: var(--color-bg); }
+  .c-gate__enter:disabled { opacity: 0.5; cursor: default; }
+
+  /* Guests: members-only pieces are hidden; guest-only pieces (e.g. a different Next link) appear. */
+  :root[data-gate="guest"] [data-members] { display: none !important; }
+  :root:not([data-gate="guest"]) [data-guest-only] { display: none !important; }
+</style>
+<div class="c-gate" id="c-password-gate" role="dialog" aria-modal="true" aria-labelledby="c-gate-label">
+  <form class="c-gate__form" data-gate-form autocomplete="off">
+    <label class="c-gate__label" id="c-gate-label" for="c-gate-input">Enter password</label>
+    <span class="c-gate__box">
+      <input class="c-gate__input" id="c-gate-input" data-gate-input type="text" name="phrase"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    </span>
+    <button class="c-gate__enter" type="submit">Enter</button>
+  </form>
 </div>
 <style>
   .c-site-header {
@@ -545,7 +624,7 @@
     <nav class="c-site-header__cell c-site-header__menu" aria-label="Main">
       <a class="c-site-header__link" href="./#about" data-scroll-to="about" data-on-page="home">About</a>
       <a class="c-site-header__link" href="work" data-go="work">Work</a>
-      <a class="c-site-header__link" href="moments" data-go="moments">Moments</a>
+      <a data-members class="c-site-header__link" href="moments" data-go="moments">Moments</a>
       <a class="c-site-header__link" href="kovu" data-go="kovu">KOVU</a>
       <a class="c-site-header__link" href="thoughts" data-go="thoughts">Thoughts</a>
       <button class="c-site-header__link" type="button" data-contact-toggle aria-expanded="false" aria-controls="c-site-header-contact">Contact</button>
@@ -569,7 +648,7 @@
 <h1>Seen &amp; Captured</h1>
 <section class="s-gallery" aria-labelledby="s-gallery-illustrations"><h2 id="s-gallery-illustrations">Illustrations</h2><ul class="s-gallery__items"><li><figure><img src="../assets/moments/2022-12-17-untitled.webp" alt="A colourful marker and crayon drawing of fish among green seaweed in blue water: a pink-faced fish peeks out of a striped shell, a large diamond-shaped fish with one big eye faces right, and part of another fish shows at the edge." loading="lazy" decoding="async" width="1102" height="896"><figcaption><cite class="s-gallery__title">Untitled</cite><span class="s-gallery__date"><time datetime="2022-12-17">December 17, 2022</time></span></figcaption></figure></li></ul></section>
 <section class="s-gallery" aria-labelledby="s-gallery-photos"><h2 id="s-gallery-photos">Photos</h2><ul class="s-gallery__items"><li><figure><img src="../assets/moments/2026-07-lighthouse.webp" alt="A small white lighthouse with its light glowing, seen through dark pines above calm water at dusk." loading="lazy" decoding="async" width="833" height="942"><figcaption><cite class="s-gallery__title">Bar Harbor</cite><span class="s-gallery__date"><time datetime="2026-07">July 2026</time> · Bar Harbor, Maine</span></figcaption></figure></li><li><figure><img src="../assets/moments/2023-03-dixie-national-forest.webp" alt="A Dixie National Forest sign in front of red rock towers, with snow on the ground and clouds above." loading="lazy" decoding="async" width="818" height="961"><figcaption><span class="s-gallery__date"><time datetime="2023-03">March 2023</time> · Dixie National Forest</span></figcaption></figure></li><li><figure><img src="../assets/moments/2023-03-bryce-canyon.webp" alt="Snow over rows of orange rock spires at sunset, distant cliffs lit pink beneath the clouds." loading="lazy" decoding="async" width="2000" height="1326"><figcaption><span class="s-gallery__date"><time datetime="2023-03">March 2023</time> · Bryce Canyon</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-07-ontario-beach.webp" alt="Black and white: people swimming in a calm bay with boats anchored and a tree-lined shore behind." loading="lazy" decoding="async" width="1089" height="723"><figcaption><span class="s-gallery__date"><time datetime="2022-07">July 2022</time> · Ontario Beach</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-02-niagara-falls.webp" alt="A wide waterfall in winter, its banks covered in snow and ice under a pale pink sky." loading="lazy" decoding="async" width="1545" height="1024"><figcaption><span class="s-gallery__date"><time datetime="2022-02">February 2022</time> · Niagara Falls</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-01-kayak.webp" alt="A kayaker paddles on rippling blue water below green mountains with clouds resting on their peaks." loading="lazy" decoding="async" width="989" height="795"><figcaption><span class="s-gallery__date"><time datetime="2022-01">January 2022</time> · Maui, Hawaii</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-01-beach.webp" alt="People sit and stand on a sandy beach at golden hour as big waves roll in, trees leaning at the left." loading="lazy" decoding="async" width="1089" height="722"><figcaption><span class="s-gallery__date"><time datetime="2022-01">January 2022</time> · Honolulu, Hawaii</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-01-lava-field.webp" alt="People walk through bright green ground cover beside black lava rock, an old building and palm trees behind." loading="lazy" decoding="async" width="1089" height="722"><figcaption><cite class="s-gallery__title">Punalu&#x27;u Black Sand Beach</cite><span class="s-gallery__date"><time datetime="2022-01">January 2022</time> · Big Island, Hawaii</span></figcaption></figure></li><li><figure><img src="../assets/moments/2022-01-from-the-plane.webp" alt="From a plane window: a coastline glowing orange under a band of sunset and a dark grey sky." loading="lazy" decoding="async" width="722" height="1089"><figcaption><cite class="s-gallery__title">Takeoff</cite><span class="s-gallery__date"><time datetime="2022-01">January 2022</time> · Hawaiian Air Space</span></figcaption></figure></li><li><figure><img src="../assets/moments/2021-fall-thayakaram.webp" alt="Hands reach toward a game board on the carpet, its pieces in green and yellow." loading="lazy" decoding="async" width="641" height="425"><figcaption><cite class="s-gallery__title">Playing Thayakaram</cite><span class="s-gallery__date"><time datetime="2021">Fall 2021</time> · Liverpool, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2021-06-pines.webp" alt="Tall pine trunks on a green lawn beside a still, dark lake that reflects the forest." loading="lazy" decoding="async" width="1500" height="994"><figcaption><span class="s-gallery__date"><time datetime="2021-06">June 2021</time> · Minerva, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2021-06-blanket.webp" alt="Black and white: a blanket on the grass with a sketchbook, markers and a phone, bags nearby." loading="lazy" decoding="async" width="1609" height="2000"><figcaption><span class="s-gallery__date"><time datetime="2021-06">June 2021</time> · Genesee Valley Park</span></figcaption></figure></li><li><figure><img src="../assets/moments/2021-06-around-the-corner.webp" alt="Black and white: a small dog on the grass by a big tree trunk where a park path curves out of sight." loading="lazy" decoding="async" width="745" height="1108"><figcaption><cite class="s-gallery__title">Around the Corner</cite><span class="s-gallery__date"><time datetime="2021-06">June 2021</time> · Genesee Valley Park</span></figcaption></figure></li><li><figure><img src="../assets/moments/2019-fall-library.webp" alt="Black and white: a domed library with tall columns at dusk, framed by dark trees, two people walking by the steps." loading="lazy" decoding="async" width="2000" height="1299"><figcaption><cite class="s-gallery__title">Rush Rhees</cite><span class="s-gallery__date"><time datetime="2019">Fall 2019</time> · Rochester, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2019-fall-main-street.webp" alt="Black and white: the curved front of an old theatre on a corner of Main Street, two people crossing in the foreground." loading="lazy" decoding="async" width="945" height="1570"><figcaption><cite class="s-gallery__title">Eastman School of Music</cite><span class="s-gallery__date"><time datetime="2019">Fall 2019</time> · Rochester, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2019-fall-mural.webp" alt="Black and white: a man walks past a painted wall with hearts, figures and the word Gemeinschaft." loading="lazy" decoding="async" width="1612" height="1018"><figcaption><span class="s-gallery__date"><time datetime="2019">Fall 2019</time> · Syracuse, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2019-fall-little-library.webp" alt="Black and white: a little free library among tall leafy plants, a helmet resting on its roof, a house behind." loading="lazy" decoding="async" width="1139" height="690"><figcaption><cite class="s-gallery__title">Library in the Leaves</cite><span class="s-gallery__date"><time datetime="2019">Fall 2019</time> · Rochester, New York</span></figcaption></figure></li><li><figure><img src="../assets/moments/2017-02-sea-star.webp" alt="Underwater: a snorkeler in blue fins holds up a red and white cushion sea star." loading="lazy" decoding="async" width="1024" height="768"><figcaption><cite class="s-gallery__title">Sea Star</cite><span class="s-gallery__date"><time datetime="2017-02">February 2017</time> · Phuket, Thailand</span></figcaption></figure></li><li><figure><img src="../assets/moments/2017-02-clownfish.webp" alt="Underwater: a black, white and orange clownfish close up beside a sea anemone." loading="lazy" decoding="async" width="1024" height="768"><figcaption><span class="s-gallery__date"><time datetime="2017-02">February 2017</time> · Phuket, Thailand</span></figcaption></figure></li><li><figure><img src="../assets/moments/2017-02-clownfish-pair.webp" alt="Underwater: two clownfish swim above a reef and its anemones." loading="lazy" decoding="async" width="1024" height="768"><figcaption><span class="s-gallery__date"><time datetime="2017-02">February 2017</time> · Phuket, Thailand</span></figcaption></figure></li></ul></section>
-<p class="s-next-wrap"><a class="s-next" id="s-next" href="../kovu/" data-go="kovu">Next: KOVU <span class="s-next__arrow" aria-hidden="true">→</span></a></p>
+<p class="s-next-wrap" data-members><a class="s-next" id="s-next" href="../kovu/" data-go="kovu">Next: KOVU <span class="s-next__arrow" aria-hidden="true">→</span></a></p><p class="s-next-wrap" data-guest-only><button class="s-next" id="s-next-guest" type="button" data-open-contact>Next: Contact <span class="s-next__arrow" aria-hidden="true">→</span></button></p>
 <style>
   .c-waves {
     --color-bg: #000000;
@@ -613,9 +692,11 @@
 <script src="../assets/js/wodniack-interactions.js"></script>
 <script src="../assets/js/interactions.js"></script>
 <script>
-CustomLogoLoader.init("c-logo-loader");
+CustomLogoLoader.init("c-logo-loader", CustomPasswordGate.pending() ? { dockTo: false } : {});
+CustomPasswordGate.init("c-password-gate", {"hash": "8b88ccc998e8c56cbff4443f1dd33e6c063c42985164f2bd16806a6215e4739a", "salt": "divyaduraisamy.org password page", "iterations": 200000, "home": "../"});
 CustomSiteHeader.init("c-site-header", {"linkedin": "https://www.linkedin.com/in/divya-duraisamy-936b94260/", "email": "bW9jLmxpYW1nQGtyb3d5bWFzaWFydWRheXZpZA==", "page": "moments", "pages": {"home": "../", "work": "../work/", "moments": "../moments/", "kovu": "../kovu/", "thoughts": "../thoughts/"}});
 CustomNextLink.init("s-next");
+CustomNextLink.init("s-next-guest");
 WodWaves.init("c-wave-field"); WodWaves.enableCursor("c-wave-field");
 </script>
 </body>

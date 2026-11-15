@@ -12,6 +12,7 @@
  *     CustomWalkPlanner.init("c-walk-button");   // pulling the walk button opens the walk planner
  *     CustomWalkForecast.init("c-walk-forecast"); // the in-page walk planner (plain web version)
  *     CustomLinkPull.init("c-recipe-bowl");      // pulling a drawn link (the recipe bowl) opens it
+ *     CustomPasswordGate.init("c-password-gate", { hash, salt }); // password page (plain web version)
  *   init() accepts an element id or an element and is safe to call twice.
  *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
  *
@@ -2052,6 +2053,80 @@ const CustomNextLink = {
   },
 };
 
+/* Password gate -----------------------------------------------------------------------------------
+ * The password page (password-gate.html, divyaduraisamy.org). Shown once per browser session until
+ * the visitor enters something. The phrase is compared as a PBKDF2-SHA256 hash (options.hash, made
+ * by build_static.py from .streamlit/secrets.toml), so the page never contains the phrase itself.
+ * Right phrase: <html data-gate="full">. Anything else: data-gate="guest" (members-only pieces are
+ * hidden by CSS; on a members-only page the visitor is sent home). Typing is compared lowercased,
+ * with spaces trimmed and runs of spaces made single. This is a playful gate, not real security.
+ */
+const CustomPasswordGate = {
+  storageKey: "site-gate",
+
+  // Whether the gate still needs an answer this session (used to keep the loader's logo centred).
+  pending() {
+    const v = CustomEnv.session.get(this.storageKey);
+    return v !== "full" && v !== "guest";
+  },
+
+  normalize(text) {
+    return text.trim().toLowerCase().replace(/\s+/g, " ");
+  },
+
+  async hash(text, salt, iterations) {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(text), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt: enc.encode(salt), iterations }, key, 256);
+    return Array.from(new Uint8Array(bits), (b) => b.toString(16).padStart(2, "0")).join("");
+  },
+
+  init(target = "c-password-gate", options = {}) {
+    const el = CustomEnv.resolve(target);
+    if (!CustomEnv.claim(el)) return null;
+    const opts = Object.assign({ hash: "", salt: "", iterations: 200000, home: "./" }, options);
+    const root = document.documentElement;
+    if (!this.pending()) { el.remove(); return null; }
+
+    if (getComputedStyle(el).getPropertyValue("--gate-box").trim() !== "none") el.dataset.hasBox = "";
+    // Everything behind the gate is out of reach (keyboard and screen readers) until it is answered.
+    const behind = Array.from(document.body.children).filter((n) => n !== el && n.id !== "c-logo-loader");
+    behind.forEach((n) => { n.inert = true; });
+    document.body.style.overflow = "hidden";
+
+    const form = el.querySelector("[data-gate-form]");
+    const input = el.querySelector("[data-gate-input]");
+    const button = form.querySelector("button");
+    const focus = () => input.focus({ preventScroll: true });
+    if (root.dataset.logoLoader === "playing") document.addEventListener("logoloader:done", focus, { once: true });
+    else focus();
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = this.normalize(input.value);
+      if (!text) { focus(); return; }
+      button.disabled = true;
+      let verdict = "guest";
+      try {
+        if (opts.hash && (await this.hash(text, opts.salt, opts.iterations)) === opts.hash) verdict = "full";
+      } catch (err) { /* no crypto.subtle (plain http): guest */ }
+      CustomEnv.session.set(this.storageKey, verdict);
+      if (verdict === "guest" && root.hasAttribute("data-members-page")) {
+        window.location.replace(opts.home);
+        return;
+      }
+      behind.forEach((n) => { n.inert = false; });
+      document.body.style.overflow = "";
+      const done = () => { root.dataset.gate = verdict; el.remove(); };
+      if (CustomEnv.reducedMotion) { done(); return; }
+      el.classList.add("is-leaving");
+      el.addEventListener("animationend", done, { once: true });
+    });
+    return el;
+  },
+};
+
 /* Link pull ---------------------------------------------------------------------------------------
  * A drawn link that stretches with CustomPetHead (recipe-bowl.html). A plain click or Enter
  * follows the link as usual (new tab). Pulling and letting go opens it too: the release opens
@@ -2090,3 +2165,4 @@ window.CustomWalkPlanner = CustomWalkPlanner;
 window.CustomWalkForecast = CustomWalkForecast;
 window.CustomNextLink = CustomNextLink;
 window.CustomLinkPull = CustomLinkPull;
+window.CustomPasswordGate = CustomPasswordGate;

@@ -31,6 +31,12 @@ the last one opens Contact.
 
 Text and Page take only="domain" (divyaduraisamy.org only) or only="streamlit" (the Streamlit
 site only). Without it, both sites show it.
+
+Password page (divyaduraisamy.org): visitors type a phrase first. The right phrase shows everything;
+any other phrase lets them in as a guest. Page and Comic take members=True to hide them from guests
+(and the page's header link and "Next" links); members-only pages are also left out of the
+sitemap and tagged noindex, so search engines skip them until you remove members=True. The phrase itself lives in .streamlit/secrets.toml
+as site_phrase = "..." (never in this file); build_static.py publishes only a scrambled hash of it.
 """
 
 from __future__ import annotations
@@ -117,6 +123,7 @@ class Comic:
     folder: str             # panels as transparent line art (ink = opaque), shown in name order
     alts: list[str] = field(default_factory=list)  # what each panel shows, for screen readers
     only: str | None = "domain"
+    members: bool = False   # True: hidden from guests (wrong phrase on the password page)
 
 
 @dataclass
@@ -163,6 +170,7 @@ class Page:
     path: str       # web address after the domain: "" (home), "work", "kovu"
     blocks: list = field(default_factory=list)
     only: str | None = None  # "domain": only on divyaduraisamy.org (no Streamlit page, no header link there)
+    members: bool = False    # True: hidden from guests (wrong phrase on the password page)
 
 
 # The first page is the home page. The header's links are Work, Moments, KOVU and Thoughts (plus About and Contact).
@@ -240,7 +248,7 @@ PAGES = {
         ]),
         Gallery("Stories & Cartoons"),
         Waves(),
-    ], only="domain"),
+    ], only="domain", members=True),
     "kovu": Page("KOVU", "kovu", [
         Title("projects inspired by my dog kovu"),
         Pet(caption="", still=True),
@@ -254,7 +262,7 @@ PAGES = {
             "He loved to walk, with Kovu on a winding path under trees, looking back.",
             "He loved to snack, with Kovu looking up at treats tossed through the air.",
             "But most of all, he loved to smile. Two drawings of Kovu smiling and a smiley face.",
-        ]),
+        ], members=True),
         Waves(),
     ]),
     # Each piece is a text file in thoughts/ (see thoughts/README.md); this page lists them.
