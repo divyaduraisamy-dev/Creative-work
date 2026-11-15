@@ -2089,7 +2089,7 @@ const CustomPasswordGate = {
     const opts = Object.assign({
       hash: "", salt: "", iterations: 200000, home: "./",
       welcome: "welcome to behind the scenes",   // right phrase
-      toHome: "taking you to the homepage…",      // anything else
+      toHome: "nice try, but welcome in",          // anything else
       messageMs: 1500,                            // how long the line shows before moving on
     }, options);
     const root = document.documentElement;
