@@ -2089,8 +2089,8 @@ const CustomPasswordGate = {
     const opts = Object.assign({
       hash: "", salt: "", iterations: 200000, home: "./",
       welcome: "welcome to behind the scenes",   // right phrase
-      toHome: "nice try, but welcome in",          // anything else
-      messageMs: 1500,                            // how long the line shows before moving on
+      wrong: "sorry, incorrect password",         // anything else: they stay and can try again
+      messageMs: 1500,                            // how long the welcome shows before moving on
     }, options);
     const root = document.documentElement;
     if (!this.pending()) { el.remove(); return null; }
@@ -2104,6 +2104,7 @@ const CustomPasswordGate = {
 
     const form = el.querySelector("[data-gate-form]");
     const input = el.querySelector("[data-gate-input]");
+    const message = el.querySelector("[data-gate-message]");
     // Colour switch: the word says the colours it switches to.
     const themeBtn = el.querySelector("[data-gate-theme]");
     if (themeBtn) {
@@ -2121,31 +2122,15 @@ const CustomPasswordGate = {
         if (e.detail > 0) input.focus({ preventScroll: true });  // mouse/tap: keep typing where you were
       });
     }
-    const button = form.querySelector("button");
+    const button = form.querySelector("[type=submit]");
+    const skip = el.querySelector("[data-gate-skip]");
     const focus = () => input.focus({ preventScroll: true });
     if (root.dataset.logoLoader === "playing") document.addEventListener("logoloader:done", focus, { once: true });
     else focus();
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = this.normalize(input.value);
-      if (!text) { focus(); return; }
-      button.disabled = true;
-      let verdict = "guest";
-      try {
-        if (opts.hash && (await this.hash(text, opts.salt, opts.iterations)) === opts.hash) verdict = "full";
-      } catch (err) { /* no crypto.subtle (plain http): guest */ }
+    // Let them in. Guests go to the homepage (guest view); the right phrase stays on the page they opened.
+    const enter = (verdict) => {
       CustomEnv.session.set(this.storageKey, verdict);
-
-      // Say where they're headed, in the handwriting, in place of "go"; then go there.
-      // Wrong phrase: the homepage (guest view). Right phrase: the page they opened (full site).
-      input.readOnly = true;
-      if (themeBtn) themeBtn.disabled = true;
-      const message = el.querySelector("[data-gate-message]");
-      if (message) message.textContent = verdict === "full" ? opts.welcome : opts.toHome;
-      el.classList.add("is-answered");
-      await new Promise((resolve) => setTimeout(resolve, opts.messageMs));
-
       const onHome = new URL(opts.home, window.location.href).pathname === window.location.pathname;
       if (verdict === "guest" && !onHome) {
         window.location.replace(opts.home);
@@ -2157,6 +2142,57 @@ const CustomPasswordGate = {
       if (CustomEnv.reducedMotion) { done(); return; }
       el.classList.add("is-leaving");
       el.addEventListener("animationend", (ev) => { if (ev.target === el) done(); });
+    };
+
+    // "enter without password" (always under "go"; in its place after a wrong password): straight in as a guest.
+    if (skip) skip.addEventListener("click", () => { skip.disabled = button.disabled = true; enter("guest"); });
+    // Typing again after a wrong password brings "go" back.
+    input.addEventListener("input", () => {
+      if (!el.classList.contains("is-wrong")) return;
+      el.classList.remove("is-wrong");
+      if (message) message.textContent = "";
+    });
+    // Enter always checks the phrase, even while "go" is swapped out.
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.isComposing && el.classList.contains("is-wrong")) { e.preventDefault(); form.requestSubmit(); }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = this.normalize(input.value);
+      if (!text) { focus(); return; }
+      button.disabled = true;
+      let right = false;
+      try {
+        right = Boolean(opts.hash) && (await this.hash(text, opts.salt, opts.iterations)) === opts.hash;
+      } catch (err) { /* no crypto.subtle (plain http): can't check, so it counts as wrong */ }
+
+      if (!right) {
+        // Say so under the drawing, swap "go" for "enter without password", and leave the box ready to try again.
+        button.disabled = false;
+        if (message) {
+          message.textContent = "";
+          requestAnimationFrame(() => { message.textContent = opts.wrong; });  // re-announced every try
+        }
+        el.classList.add("is-wrong");
+        if (skip) {
+          skip.classList.remove("is-nudged");
+          void skip.offsetWidth;  // restart the wiggle on every wrong try
+          skip.classList.add("is-nudged");
+        }
+        input.select();
+        return;
+      }
+
+      // Right phrase: the welcome line takes the place of "go", then the page they opened.
+      input.readOnly = true;
+      if (themeBtn) themeBtn.disabled = true;
+      if (skip) skip.disabled = true;
+      if (message) message.textContent = opts.welcome;
+      el.classList.remove("is-wrong");
+      el.classList.add("is-answered");
+      await new Promise((resolve) => setTimeout(resolve, opts.messageMs));
+      enter("full");
     });
     return el;
   },

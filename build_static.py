@@ -390,13 +390,13 @@ def gate_markup(prefix: str) -> str:
     """The password page, pointing at the box drawings and the handwriting font."""
     box = prefix + copy_asset(CUSTOM / "assets" / "password-box.webp")
     font = prefix + copy_asset(CUSTOM / "assets" / "fonts" / "divya-handwriting" / "divya-handwriting.woff2", "fonts")
-    return (component("custom-features/password-gate.html")
+    html = (component("custom-features/password-gate.html")
             .replace("url('assets/password-box.webp')", f"url('{box}')")
             .replace("url('assets/fonts/divya-handwriting.woff2')", f"url('{font}')")
-            .replace("url('assets/logo.svg')", f"url('{prefix}assets/logo.svg')")
-            .replace("url('assets/go-box.webp')", f"url('{prefix + copy_asset(CUSTOM / 'assets' / 'go-box.webp')}')")
-            .replace("url('assets/go-box-filled.webp')",
-                     f"url('{prefix + copy_asset(CUSTOM / 'assets' / 'go-box-filled.webp')}')"))
+            .replace("url('assets/logo.svg')", f"url('{prefix}assets/logo.svg')"))
+    for name in ("go-box.webp", "go-box-filled.webp", "square-box.webp", "square-box-filled.webp"):  # drawn buttons
+        html = html.replace(f"url('assets/{name}')", f"url('{prefix + copy_asset(CUSTOM / 'assets' / name)}')")
+    return html
 
 
 def header_markup() -> str:

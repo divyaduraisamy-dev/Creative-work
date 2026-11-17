@@ -240,7 +240,7 @@
   @media (prefers-reduced-motion: reduce) { .c-gate.is-leaving { animation-duration: 0.01s; } }
 
   /* On short screens the drawing shrinks so the switch, drawing and "go" all fit. */
-  .c-gate__form { width: min(38rem, 100%, (100vh - 18rem - 20vh) * 1.7); min-width: min(16rem, 100%); }
+  .c-gate__form { width: min(34rem, 100%, (100vh - 30rem - 20vh) * 1.7); min-width: min(16rem, 100%); }
   .c-gate__card {
     position: relative;
     aspect-ratio: 1200 / 707;
@@ -327,11 +327,44 @@
 
   .c-gate__go {
     width: clamp(10rem, 40%, 14rem);
-    margin: 1.75rem auto 0;
+    margin: 1.25rem auto 0;
     font-size: clamp(2.3rem, 7vw, 3.1rem);
   }
 
-  /* After answering: a line in your handwriting takes the place of "go" (where they're headed). */
+  /* "enter without password", three words stacked, in bold, always under "go": after a wrong
+     password "go" steps aside so it moves up into its place, with a wiggle and a quick fill.
+     Typing again brings "go" back. The box is the
+     drawing's own outer frame (assets/square-box.webp, lines thickened to match the other buttons),
+     turned upside down so it isn't a copy of the drawing. */
+  .c-gate__skip {
+    width: clamp(10.5rem, 46%, 14rem);
+    aspect-ratio: 480 / 283;
+    margin: 0.75rem auto 0;
+    padding: 0;
+    font-size: clamp(1.6rem, 5vw, 2rem);
+    line-height: 0.95;
+  }
+  .c-gate.is-wrong .c-gate__go { display: none; }
+  .c-gate.is-wrong .c-gate__skip { margin-top: 0.9rem; }
+  .c-gate.is-answered .c-gate__skip { display: none; }
+  .c-gate__skip span { display: grid; }
+  .c-gate__skip span span { -webkit-text-stroke: 0.045em currentColor; }  /* bold: your font has one weight, so the letters get a matching outline */
+  .c-gate__skip::before, .c-gate__skip::after { transform: rotate(180deg); }
+  .c-gate__skip::before { -webkit-mask-image: url('assets/square-box.webp'); mask-image: url('assets/square-box.webp'); }
+  .c-gate__skip::after { -webkit-mask-image: url('assets/square-box-filled.webp'); mask-image: url('assets/square-box-filled.webp'); }
+  .c-gate__skip.is-nudged { animation: c-gate-nudge 0.9s ease both; }
+  .c-gate__skip.is-nudged::after { animation: c-gate-blink 1.4s ease both; }
+  .c-gate__skip.is-nudged span { animation: c-gate-blink-word 1.4s ease both; }
+  @keyframes c-gate-nudge {
+    15%, 45%, 75% { transform: rotate(-2.5deg); }
+    30%, 60% { transform: rotate(2.5deg); }
+    90% { transform: rotate(0); }
+  }
+  @keyframes c-gate-blink { 20%, 70% { opacity: 1; } }
+  @keyframes c-gate-blink-word { 20%, 70% { color: var(--color-bg); } }
+  @media (prefers-reduced-motion: reduce) { .c-gate__skip.is-nudged { animation: none; } }
+
+  /* A line in your handwriting: "sorry, incorrect password" under the drawing, or the welcome in place of "go". */
   .c-gate__message {
     display: none;
     margin: 1.75rem 0 0;
@@ -342,6 +375,13 @@
   }
   .c-gate.is-answered .c-gate__go { display: none; }
   .c-gate.is-answered .c-gate__message { display: block; animation: c-gate-say 0.35s ease both; }
+  /* Wrong password: the line shows under the drawing, with "enter without password" below it. */
+  .c-gate.is-wrong .c-gate__message {
+    display: block;
+    margin: 0.9rem min(0px, 50% - 50vw + 1rem) 0;  /* as wide as the screen allows: one line, even when the drawing is narrow */
+    font-size: clamp(1.35rem, 4.6vw, 1.75rem);
+    white-space: nowrap;
+  }
   @keyframes c-gate-say { from { opacity: 0; transform: translateY(6px); } }
   @media (prefers-reduced-motion: reduce) { .c-gate.is-answered .c-gate__message { animation: none; } }
 
@@ -349,7 +389,7 @@
      says the colours it switches to, with a note underneath. */
   .c-gate__logo {
     display: block;
-    width: clamp(4.5rem, 16vh, 8.5rem);  /* the visitor's first look at the site: big */
+    width: clamp(5.5rem, 22vh, 11.5rem);  /* the visitor's first look at the site: big */
     aspect-ratio: 1037 / 1157;
     margin-bottom: clamp(0.5rem, 2vh, 1.25rem);
     background: currentColor;
@@ -359,10 +399,10 @@
   .c-gate__theme {
     display: grid;
     justify-items: center;
-    gap: 0.35rem;
+    gap: 0.25rem;
   }
-  .c-gate__theme-btn { width: clamp(7.5rem, 22vw, 9rem); font-size: clamp(1.7rem, 5vw, 2.1rem); }
-  .c-gate__note { margin: 0; font: 400 1.25rem/1.1 var(--font-hand); opacity: 0.8; white-space: nowrap; }
+  .c-gate__theme-btn { width: clamp(5.5rem, 16vw, 6.5rem); font-size: clamp(1.3rem, 3.8vw, 1.55rem); }
+  .c-gate__note { margin: 0; font: 400 1.05rem/1.1 var(--font-hand); opacity: 0.8; white-space: nowrap; }
   .c-gate, .c-gate__btn::before { transition: background-color 0.3s ease, color 0.3s ease; }
 
   /* Guests: members-only pieces are hidden; guest-only pieces (e.g. a different Next link) appear. */
@@ -381,8 +421,9 @@
       <input class="c-gate__input" id="c-gate-input" data-gate-input type="text" name="phrase"
              autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
     </div>
-    <button class="c-gate__btn c-gate__go" type="submit"><span>go</span></button>
     <p class="c-gate__message" data-gate-message role="status" aria-live="polite"></p>
+    <button class="c-gate__btn c-gate__go" type="submit"><span>go</span></button>
+    <button class="c-gate__btn c-gate__skip" type="button" data-gate-skip><span><span>enter</span> <span>without</span> <span>password</span></span></button>
   </form>
 </div>
 <style>
