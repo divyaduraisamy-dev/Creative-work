@@ -28,6 +28,9 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     RecipeFinder(url, why=..., how=..., how_points=[...], note=...)
                                  the Recipe Finder layout on Work: bowl, can, swimming fish, add-a-recipe
                                  form and tables of food (plain web version only)
+    KeepOrToss()                 the Keep or Toss app on Work: its drawing (the link), a few points and a
+                                 note. Its words live in keep_or_toss_content.py (WORK_ENTRY), next to the
+                                 app's own (plain web version only)
 
 Each page on divyaduraisamy.org ends with a "Next" link to the page after it, in the order below;
 the last one opens Contact.
@@ -168,6 +171,13 @@ class RecipeFinder:
 
 
 @dataclass
+class KeepOrToss:
+    """The Keep or Toss entry on Work. Text, drawing and "friends only" are set in
+    keep_or_toss_content.py (WORK_ENTRY, MEMBERS_ONLY), so all of the app's words stay in one file."""
+    only: str | None = "domain"
+
+
+@dataclass
 class Gallery:
     heading: str
     pieces: list[Artwork] = field(default_factory=list)
@@ -228,6 +238,7 @@ PAGES = {
                           "time": "entry.765439830", "appliance": "entry.1599377564", "difficulty": "entry.224785609",
                           "dietary": "entry.213381143", "name": "entry.445550242"},
         ),
+        KeepOrToss(),
         Waves(),
     ]),
     # Illustrations, photos, stories and cartoons not about KOVU. Header label: Moments.
