@@ -795,6 +795,13 @@
 <h1>Work</h1>
 <p>Projects I&#x27;ve built are aimed to address specific problems surrounding health equity in locations I&#x27;ve worked.</p>
 <section class="s-project"><h2 class="s-project__title">Recipe Finder</h2><style>
+  /* Neat Handwriting: the clearer version of Divya's handwriting (assets/fonts/neat-handwriting),
+     for the fish section's paragraphs. Letters it doesn't have fall back to Rubik. */
+  @font-face {
+    font-family: "Neat Handwriting";
+    src: url('../assets/fonts/neat-handwriting.woff2') format("woff2");
+    font-display: swap;
+  }
   .c-recipe {
     --color-text: #f2ead3;
     --layout-recipe-gap: clamp(1rem, 3vw, 2.5rem);
@@ -862,7 +869,12 @@
   .c-recipe__bubble { margin: 0; padding: 0; width: min(100%, 11rem); }
   .c-recipe__bubble .c-draw { width: 100%; }
   .c-recipe__say { max-width: 36rem; }
-  .c-recipe__say p, .c-recipe__say ul { margin: 0; line-height: 1.6; }
+  .c-recipe__say p, .c-recipe__say ul {
+    margin: 0;
+    font-family: "Neat Handwriting", "Rubik", sans-serif;
+    font-size: 1.4em;  /* handwriting runs small for its size */
+    line-height: 1.35;
+  }
   .c-recipe__say ul { padding-left: 1.2rem; }
 
   /* add a recipe: the bubble and its fish are one button. */

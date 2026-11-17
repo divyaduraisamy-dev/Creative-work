@@ -543,7 +543,9 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                 f'aria-expanded="false" aria-controls="c-recipe-form">{drawing("bubble-add", "Add a recipe", True)}</button></h3>'
                 + (f"<p>{esc(block.add)}</p>" if block.add else "") + f'</div>{recipe_form(block)}</li>')
             markup = (
-                once("recipe-finder", component("custom-features/recipe-finder.html"))
+                once("recipe-finder", component("custom-features/recipe-finder.html").replace(
+                    "url('assets/fonts/neat-handwriting.woff2')",
+                    f"url('{prefix + copy_asset(CUSTOM / 'assets' / 'fonts' / 'neat-handwriting' / 'neat-handwriting.woff2', 'fonts')}')"))
                 + '<div class="c-recipe" id="c-recipe" data-source="custom">'
                 + f'<div class="c-recipe__bowl">{once("recipe-bowl", bowl)}</div>'
                 + f'<div class="c-recipe__can">{drawing("can", "A can of fish above a hand pointing at the bowl: Try it out")}</div>'
