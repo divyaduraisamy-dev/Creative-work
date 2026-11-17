@@ -1,0 +1,361 @@
+/*
+  Keep or Toss: styles for the app's pages (divyaduraisamy.org/keep-or-toss/) and its entry on Work.
+  Source:  custom. Built by keep_or_toss.py; the page itself (header, colour switch, footer) comes
+           from build_static.py, so these rules only cover what's inside .k-app and .k-work.
+  Colours: the page's own two (--page-bg and --page-fg, black and cream, swapped by the colour
+           switch), plus three for keep / cut / toss. Those always sit next to an icon and words,
+           never on their own.
+  Type:    Neat Handwriting everywhere in the app (it runs small, so sizes are larger than usual;
+           missing characters such as ° and % fall back to Rubik).
+  Phones first; wider screens get more columns.
+*/
+
+.k-app, .k-work {
+  --k-keep: #8fd8a3;
+  --k-cut: #f3c46b;
+  --k-toss: #ff9a90;
+  --k-line: color-mix(in srgb, var(--page-fg) 70%, transparent);
+  --k-soft: color-mix(in srgb, var(--page-fg) 8%, transparent);
+  --k-hand: "Neat Handwriting", "Rubik", sans-serif;
+  /* A slightly uneven outline, like a box drawn by hand. */
+  --k-sketch: 255px 18px 225px 18px / 18px 225px 18px 255px;
+}
+
+:root[data-site-theme="light"] .k-app,
+:root[data-site-theme="light"] .k-work {
+  --k-keep: #1b6a33;
+  --k-cut: #8a4f00;
+  --k-toss: #b0241a;
+}
+
+/* ---------- The app ---------- */
+.s-main .k-app {
+  max-width: 52rem;
+  font-family: var(--k-hand);
+  font-size: 1.4rem;
+  line-height: 1.35;
+}
+
+.s-main .k-app h1,
+.s-main .k-app h2,
+.s-main .k-app h3,
+.s-main .k-app h4 {
+  margin: 0;
+  font-family: var(--k-hand);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.s-main .k-app h1 { font-size: 3.2rem; padding: 1.25rem 0 0.25rem; }
+.s-main .k-app h2 { font-size: 2.3rem; padding: 0; }
+.s-main .k-app h3 { font-size: 1.75rem; }
+.s-main .k-app h4 { font-size: 1.45rem; margin-top: 0.75rem; }
+.s-main .k-app p { margin: 0; }
+.k-app button, .k-app input { font: inherit; color: inherit; }
+.k-app a { color: inherit; text-underline-offset: 0.18em; }
+.k-app [hidden] { display: none !important; }
+
+.k-app :focus-visible,
+.k-work :focus-visible {
+  outline: 3px solid var(--page-fg);
+  outline-offset: 4px;
+}
+
+.k-icon { width: 1.15em; height: 1.15em; flex: none; }
+
+.k-lead { font-size: 1.15em; max-width: 36rem; }
+.k-kicker { font-size: 1.05rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.k-empty { opacity: 0.8; font-style: italic; }
+.k-hero { margin-bottom: 1.25rem; }
+
+.k-back { margin-top: 1.25rem; }
+.k-back a { display: inline-flex; align-items: center; gap: 0.3em; min-height: 44px; text-decoration: none; }
+.k-back a:hover span, .k-back a:focus-visible span { text-decoration: underline; }
+
+.k-section { margin-top: 2.25rem; }
+.k-section > h2 { margin-bottom: 0.6rem; }
+
+/* Drawings: the colour layer as a picture, the ink as a mask in the text colour. */
+.k-art { position: relative; display: block; aspect-ratio: var(--ratio, 1); }
+.k-art__color { display: block; width: 100%; height: auto; }
+.k-art__ink {
+  position: absolute;
+  inset: 0;
+  background: var(--page-fg);
+  /* The picture itself (mask-image) is set on each drawing in the page. */
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Why I made this */
+.k-why {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.1rem;
+  border: 2px solid var(--k-line);
+  border-radius: var(--k-sketch);
+  max-width: 40rem;
+}
+.s-main .k-why h2 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+
+/* Search and food groups */
+.k-search { display: grid; gap: 0.35rem; max-width: 32rem; }
+.k-search label { font-size: 1.6rem; }
+.k-search__box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.9rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+  background: var(--k-soft);
+}
+.k-search__box input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  font-size: 1.35rem;
+}
+.k-search__box input::placeholder { color: inherit; opacity: 0.6; }
+.k-search__box input:focus-visible { outline: none; }
+.k-search__box:focus-within { outline: 3px solid var(--page-fg); outline-offset: 4px; }
+
+.k-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.k-chip {
+  min-height: 44px;
+  padding: 0.25rem 1rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.k-chip:hover { background: var(--k-soft); }
+.k-app .k-chip[aria-pressed="true"] { background: var(--page-fg); color: var(--page-bg); }
+
+.k-count { margin-top: 0.75rem; font-size: 1.15rem; opacity: 0.85; min-height: 1.4em; }
+.k-none { margin-top: 0.5rem; }
+
+.k-group { margin-top: 1.5rem; }
+.s-main .k-group h2 { font-size: 2rem; margin-bottom: 0.5rem; }
+.k-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+}
+.k-card a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  height: 100%;
+  padding: 0.75rem 0.5rem 0.6rem;
+  border: 2px solid var(--k-line);
+  border-radius: var(--k-sketch);
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.k-card a:hover, .k-card a:focus-visible { border-color: var(--page-fg); transform: rotate(-1.5deg); }
+.k-card__art { width: 100%; max-width: 7rem; }
+.k-card__name { font-size: 1.3rem; line-height: 1.15; }
+
+/* Links to Basics and the game */
+.k-links {
+  list-style: none;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.k-links a {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 1.1rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+  text-decoration: none;
+}
+.k-links a:hover, .k-links a:focus-visible { background: var(--k-soft); }
+.k-links__title { font-size: 1.7rem; line-height: 1.1; text-decoration: underline; text-underline-offset: 0.18em; }
+.k-links--small a { padding: 0.6rem 1rem; }
+.k-links--small .k-links__title { font-size: 1.45rem; }
+
+/* The note at the bottom */
+.k-note {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--k-line);
+  font-size: 1.15rem;
+  max-width: 40rem;
+}
+.k-note p + p { margin-top: 0.4rem; }
+
+/* ---------- One food ---------- */
+.k-food__head { display: grid; gap: 0.75rem; align-items: center; }
+.k-food__art { width: min(14rem, 60vw); }
+.s-main .k-food__head h1 { padding-top: 0.25rem; }
+.k-also { opacity: 0.85; }
+
+.k-help { margin-bottom: 0.5rem; }
+.k-choices { margin: 0 0 1rem; }
+
+.k-plan {
+  padding: 1rem 1.1rem 1.1rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+}
+.k-plan + .k-plan { margin-top: 1rem; }
+.k-facts { display: grid; gap: 0.6rem; margin: 0.75rem 0 0; }
+.k-facts div { display: grid; gap: 0.1rem; }
+.k-facts dt { font-size: 1.05rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.k-facts dd { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+.k-place { display: inline-flex; align-items: center; gap: 0.4em; }
+
+.k-how, .k-list { margin: 0.4rem 0 0; padding-left: 1.3em; }
+.k-how li + li, .k-list li + li { margin-top: 0.35rem; }
+
+.k-signs { display: grid; gap: 1rem; }
+.k-sign { padding: 1rem 1.1rem; border: 2px solid var(--k-line); border-radius: var(--k-sketch); }
+.k-sign h3 { display: flex; align-items: center; gap: 0.4em; }
+.k-sign--soon h3 .k-icon { color: var(--k-cut); }
+.k-sign--toss { border-color: var(--k-toss); }
+.k-sign--toss h3 .k-icon { color: var(--k-toss); }
+
+.k-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  margin-bottom: 0.5rem;
+  padding: 0.3rem 0.9rem;
+  border: 2px solid currentColor;
+  border-radius: var(--k-sketch);
+  font-size: 1.5rem;
+}
+.k-verdict strong { font-weight: 400; color: var(--page-fg); }
+.k-verdict--keep { color: var(--k-keep); }
+.k-verdict--cut { color: var(--k-cut); }
+.k-verdict--toss { color: var(--k-toss); }
+.k-section > p + p { margin-top: 0.5rem; }
+
+.k-sources { margin: 0; padding-left: 1.3em; font-size: 1.15rem; }
+.k-sources li + li { margin-top: 0.3rem; }
+.k-sources__detail { opacity: 0.85; }
+
+/* ---------- Basics ---------- */
+.k-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.k-rule { padding: 1rem 1.1rem; border: 2px solid var(--k-line); border-radius: var(--k-sketch); }
+.s-main .k-rule h2 { font-size: 1.9rem; margin-bottom: 0.35rem; }
+.k-rule p + p { margin-top: 0.5rem; }
+
+/* ---------- The game ---------- */
+.k-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  min-height: 52px;
+  padding: 0.4rem 1.4rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+  background: transparent;
+  font-size: 1.45rem;
+  line-height: 1.15;
+  cursor: pointer;
+}
+.k-btn:hover { background: var(--k-soft); }
+.k-app .k-btn--main { background: var(--page-fg); color: var(--page-bg); }
+.k-app .k-btn--main:hover { background: var(--page-fg); opacity: 0.88; }
+
+.k-game { margin-top: 0.5rem; }
+.k-game__best { margin-top: 0.75rem; }
+.k-round__count { font-size: 1.15rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.k-round__card {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  margin-top: 0.5rem;
+  padding: 1.1rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+  text-align: center;
+}
+.k-round__art { width: min(11rem, 50vw); }
+.k-round__food { font-size: 1.3rem; opacity: 0.85; }
+.k-round__situation { font-size: 1.9rem; line-height: 1.2; }
+.s-main .k-round__question { font-size: 1.6rem; margin-top: 1rem; }
+.k-answers { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.k-answers .k-btn { width: 100%; justify-content: flex-start; }
+.k-answers .k-btn .k-icon { width: 1.3em; height: 1.3em; }
+.k-answers .k-btn[data-answer="keep"] .k-icon { color: var(--k-keep); }
+.k-answers .k-btn[data-answer="cut"] .k-icon { color: var(--k-cut); }
+.k-answers .k-btn[data-answer="toss"] .k-icon { color: var(--k-toss); }
+.k-answers .k-btn:disabled { cursor: default; opacity: 0.55; }
+.k-answers .k-btn:disabled:hover { background: transparent; }
+.k-answers .k-btn.is-chosen, .k-answers .k-btn.is-right { opacity: 1; }
+.k-answers .k-btn.is-right { border-width: 4px; }
+.k-answers .k-btn.is-chosen:not(.is-right) { border-style: dashed; }
+
+.k-feedback {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 2px solid var(--page-fg);
+  border-radius: var(--k-sketch);
+}
+.s-main .k-feedback h3 { font-size: 2rem; }
+.k-feedback h3:focus { outline: none; }
+.k-feedback h3:focus-visible { outline: 3px solid var(--page-fg); outline-offset: 4px; }
+.k-feedback > * + * { margin-top: 0.5rem; }
+.k-feedback .k-verdict { margin: 0.25rem 0 0; }
+.k-feedback__source { font-size: 1.1rem; }
+.k-feedback__actions { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; margin-top: 0.9rem; }
+
+.k-score { padding: 1.25rem 1.1rem; border: 2px solid var(--page-fg); border-radius: var(--k-sketch); text-align: center; }
+.k-score__number { font-size: 2.6rem; line-height: 1.1; }
+.k-score > * + * { margin-top: 0.6rem; }
+
+@media (min-width: 640px) {
+  .k-food__head { grid-template-columns: 13rem 1fr; }
+  .k-food__art { width: 100%; }
+  .k-signs { grid-template-columns: 1fr 1fr; }
+  .k-links { grid-template-columns: 1fr 1fr; }
+  .k-cards { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+  .k-answers { grid-template-columns: repeat(3, 1fr); }
+  .k-answers .k-btn { justify-content: center; height: 100%; }
+  .k-facts { grid-template-columns: 1fr 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-card a { transition: none; }
+  .k-card a:hover, .k-card a:focus-visible { transform: none; }
+}
+
+/* ---------- The entry on the Work page ---------- */
+.k-work { display: grid; gap: 1rem; }
+.k-work .s-project__title a { color: inherit; text-decoration: none; }
+.k-work .s-project__title a:hover, .k-work .s-project__title a:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; }
+.k-work__link { display: block; width: min(18rem, 70vw); transform: rotate(-2deg); transition: transform 0.25s ease; }
+.k-work__link:hover, .k-work__link:focus-visible { transform: rotate(1deg) scale(1.03); }
+.k-work__text { font-family: var(--k-hand); font-size: 1.4em; line-height: 1.35; max-width: 40rem; }
+.k-work__points { margin: 0; padding-left: 1.2em; }
+.k-work__points li + li { margin-top: 0.3rem; }
+.s-main .k-work__text p { margin-top: 0.8rem; }
+.k-work__open a { display: inline-flex; align-items: center; gap: 0.3em; min-height: 44px; color: inherit; text-underline-offset: 0.18em; }
+.k-work__note { font-size: 0.85em; opacity: 0.9; }
+@media (min-width: 760px) {
+  .k-work { grid-template-columns: 18rem 1fr; align-items: start; column-gap: 2rem; }
+  .k-work .s-project__title { grid-column: 1 / -1; }
+  .k-work__link { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-work__link, .k-work__link:hover, .k-work__link:focus-visible { transition: none; transform: rotate(-2deg); }
+}
