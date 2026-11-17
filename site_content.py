@@ -222,6 +222,11 @@ PAGES = {
             note="Anyone can use this recipe finder, but it was originally inspired to help the Mechanicville Area "
                  "Community Services Center with food preparation access. A lot of our clients had expressed wanting "
                  "suggestions, variety, and healthy options. This is meant to be a resource and not a medical guide.",
+            # Answers land in the "Recipe Finder: Add a recipe" Google Form and its Sheet.
+            form_action="https://docs.google.com/forms/d/e/1FAIpQLSdoDwBAMTuOuetw1Eajvlo7qOe2tFukEqE0ud5NXKCpSB4_mg/formResponse",
+            form_entries={"dish": "entry.828203939", "ingredients": "entry.619778644", "steps": "entry.1807317442",
+                          "time": "entry.765439830", "appliance": "entry.1599377564", "difficulty": "entry.224785609",
+                          "dietary": "entry.213381143", "name": "entry.445550242"},
         ),
         Waves(),
     ]),
