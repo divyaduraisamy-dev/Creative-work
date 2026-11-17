@@ -47,6 +47,10 @@
   .s-main h1 { font-size: 2.75rem; padding: 1.25rem 0 0.5rem; }
   .s-main h2 { font-size: 2.25rem; padding: 1rem 0 0.25rem; scroll-margin-top: 1rem; }
   .s-main p { margin: 0; }
+  /* Paragraphs are in Neat Handwriting, the clearer version of Divya's handwriting
+     (ui-scrapbook/custom-features/assets/fonts/neat-handwriting). It runs small for its size, so
+     it is set larger; letters it doesn't have fall back to Rubik. Headings, menus and labels stay. */
+  .s-text { font-family: "Neat Handwriting", "Rubik", sans-serif; font-size: 1.4em; line-height: 1.35; }
   @media (max-width: 640px) {
     .s-main { padding: 0 1rem 1rem; }
     .s-main h1 { font-size: 2.25rem; }
@@ -72,6 +76,7 @@
   .s-piece { max-width: 42rem; }
   .s-piece > p + p { margin-top: 1.1rem; }
   .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-text { line-height: 1.45; }
   .s-piece .s-piece__date { margin-bottom: 1.5rem; }
   .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
   .s-piece__back a { color: inherit; }
@@ -151,7 +156,8 @@
     backdrop-filter: blur(18px);
   }
   :root[data-arriving][data-site-theme="light"] body::after { background: rgba(242, 234, 211, 0.35); }
-</style>
+
+  @font-face { font-family: "Neat Handwriting"; src: url("../assets/fonts/neat-handwriting.woff2") format("woff2"); font-display: swap; }</style>
 </head>
 <body>
 <style>
@@ -1093,7 +1099,7 @@
 
 <section class="c-walkfc" id="c-walk-forecast" data-source="custom" aria-labelledby="c-walk-forecast-title">
   <h2 class="c-walkfc__title" id="c-walk-forecast-title">Is it too hot for a walk?</h2>
-  <p>Enter your city to see a dog's heat risk for the next 12 hours. Each hour shows the risk at 15,
+  <p class="s-text">Enter your city to see a dog's heat risk for the next 12 hours. Each hour shows the risk at 15,
     30 and 60 minutes after finishing about 15 minutes of hard exercise.</p>
 
   <form class="c-walkfc__form" data-walk-form>
@@ -1158,11 +1164,11 @@
           <span><strong>Predicted core temperature above <span data-temp-c="40.1">104.2°F</span>.</strong>
           Heat stress is likely. Skip the walk or keep it to a quick, shaded potty break.</span></li>
       </ul>
-      <p>Each column shows how warm your dog is likely to be 15, 30 and 60 minutes after about
+      <p class="s-text">Each column shows how warm your dog is likely to be 15, 30 and 60 minutes after about
         15 minutes of hard exercise. Longer exercise can warm your dog more. Dogs are always warm right
         after exercise, so Moderate at 15 minutes is common. What matters most is whether it drops to
         Low by 60 minutes; the best times above use the 60-minute column.</p>
-      <p class="c-walkfc__caution"><strong>Use caution if you see High in the 15 or 30 minute
+      <p class="c-walkfc__caution s-text"><strong>Use caution if you see High in the 15 or 30 minute
         column.</strong> It means that after 15 or 30 minutes of recovery, your dog is experiencing
         heat stress.</p>
     </div>

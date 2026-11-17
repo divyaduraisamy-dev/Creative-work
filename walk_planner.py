@@ -120,11 +120,11 @@ def _key_html(unit: str) -> str:
   <div class="c-walkplan__key">
     <p class="c-walkplan__keytitle">How to read this</p>
     <ul>{rows}</ul>
-    <p>Each column shows how warm your dog is likely to be 15, 30 and 60 minutes after about
+    <p class="s-text">Each column shows how warm your dog is likely to be 15, 30 and 60 minutes after about
     15 minutes of hard exercise. Longer exercise can warm your dog more. Dogs are always warm right after exercise, so Moderate at
     15 minutes is common. What matters most is whether it drops to Low by 60 minutes; the best
     times above use the {HEADLINE_RECOVERY}-minute column.</p>
-    <p class="c-walkplan__caution"><strong>Use caution if you see High in the 15 or 30 minute
+    <p class="c-walkplan__caution s-text"><strong>Use caution if you see High in the 15 or 30 minute
     column.</strong> It means that after 15 or 30 minutes of recovery, your dog is experiencing
     heat stress.</p>
   </div>

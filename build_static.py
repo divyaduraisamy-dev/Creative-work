@@ -277,6 +277,10 @@ PAGE_CSS = """
   .s-main h1 { font-size: 2.75rem; padding: 1.25rem 0 0.5rem; }
   .s-main h2 { font-size: 2.25rem; padding: 1rem 0 0.25rem; scroll-margin-top: 1rem; }
   .s-main p { margin: 0; }
+  /* Paragraphs are in Neat Handwriting, the clearer version of Divya's handwriting
+     (ui-scrapbook/custom-features/assets/fonts/neat-handwriting). It runs small for its size, so
+     it is set larger; letters it doesn't have fall back to Rubik. Headings, menus and labels stay. */
+  .s-text { font-family: "Neat Handwriting", "Rubik", sans-serif; font-size: 1.4em; line-height: 1.35; }
   @media (max-width: 640px) {
     .s-main { padding: 0 1rem 1rem; }
     .s-main h1 { font-size: 2.25rem; }
@@ -302,6 +306,7 @@ PAGE_CSS = """
   .s-piece { max-width: 42rem; }
   .s-piece > p + p { margin-top: 1.1rem; }
   .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-text { line-height: 1.45; }
   .s-piece .s-piece__date { margin-bottom: 1.5rem; }
   .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
   .s-piece__back a { color: inherit; }
@@ -488,7 +493,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
     if piece:
         body.append(f'<article class="s-piece"><h1>{esc(piece.title)}</h1>'
                     f'<p class="s-piece__date"><time datetime="{piece.day.isoformat()}">{long_date(piece.day)}</time></p>'
-                    + "".join(f"<p>{esc(par).replace(chr(10), '<br>')}</p>" for par in piece.paragraphs)
+                    + "".join(f"<p class=\"s-text\">{esc(par).replace(chr(10), '<br>')}</p>" for par in piece.paragraphs)
                     + f'<p class="s-piece__back"><a href="{pages["thoughts"]}">← All thoughts</a></p></article>')
 
     for block in page.blocks:
@@ -574,13 +579,13 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                          f'{esc(block.title)} <span class="s-project__arrow" aria-hidden="true">↗</span>'
                          f'<span class="s-visually-hidden"> (opens in a new tab)</span></a></h2>')
             body.append(f'<section class="s-project">{title}'
-                        + (f"<p>{esc(block.text)}</p>" if block.text else "") + "</section>")
+                        + (f'<p class="s-text">{esc(block.text)}</p>' if block.text else "") + "</section>")
         elif isinstance(block, ThoughtsList):
             items = "".join(
                 f'<li><a href="{prefix}thoughts/{pc.slug}/"><span class="s-thoughts__title">{esc(pc.title)}</span></a>'
                 f'<time datetime="{pc.day.isoformat()}">{long_date(pc.day)}</time>'
-                + ("".join(f"<p>{esc(par).replace(chr(10), '<br>')}</p>" for par in pc.paragraphs) if pc.full
-                   else f"<p>{esc(pc.description)}</p>")
+                + ("".join(f"<p class=\"s-text\">{esc(par).replace(chr(10), '<br>')}</p>" for par in pc.paragraphs) if pc.full
+                   else f'<p class="s-text">{esc(pc.description)}</p>')
                 + "</li>"
                 for pc in pieces())
             if items:
@@ -588,7 +593,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
         elif isinstance(block, Title):
             body.append(f"<h1>{esc(block.text)}</h1>")
         elif isinstance(block, Text):
-            body.append(f"<p>{esc(block.text)}</p>")
+            body.append(f'<p class="s-text">{esc(block.text)}</p>')
         elif isinstance(block, Heading):
             anchor = f' id="{esc(block.anchor)}"' if block.anchor else ""
             body.append(f"<h2{anchor}>{esc(block.text)}</h2>")
@@ -691,6 +696,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
         script_tags.append(f'<script src="{prefix}assets/js/wodniack-interactions.js"></script>')
     script_tags.append(f'<script src="{prefix}assets/js/interactions.js"></script>')
 
+    NEAT_FONT = copy_asset(CUSTOM / "assets" / "fonts" / "neat-handwriting" / "neat-handwriting.woff2", "fonts")
     return f"""<!doctype html>
 <html lang="en" data-site-theme="dark" data-home="{esc(pages["home"])}"{" data-members-page" if page.members else ""}>
 <head>
@@ -704,7 +710,8 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS_URL}">
 <script>{HEAD_JS}</script>
-<style>{PAGE_CSS}</style>
+<style>{PAGE_CSS}
+  @font-face {{ font-family: "Neat Handwriting"; src: url("{prefix + NEAT_FONT}") format("woff2"); font-display: swap; }}</style>
 </head>
 <body>
 {component("custom-features/logo-loader.html")}

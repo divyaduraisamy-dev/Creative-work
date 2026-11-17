@@ -47,6 +47,10 @@
   .s-main h1 { font-size: 2.75rem; padding: 1.25rem 0 0.5rem; }
   .s-main h2 { font-size: 2.25rem; padding: 1rem 0 0.25rem; scroll-margin-top: 1rem; }
   .s-main p { margin: 0; }
+  /* Paragraphs are in Neat Handwriting, the clearer version of Divya's handwriting
+     (ui-scrapbook/custom-features/assets/fonts/neat-handwriting). It runs small for its size, so
+     it is set larger; letters it doesn't have fall back to Rubik. Headings, menus and labels stay. */
+  .s-text { font-family: "Neat Handwriting", "Rubik", sans-serif; font-size: 1.4em; line-height: 1.35; }
   @media (max-width: 640px) {
     .s-main { padding: 0 1rem 1rem; }
     .s-main h1 { font-size: 2.25rem; }
@@ -72,6 +76,7 @@
   .s-piece { max-width: 42rem; }
   .s-piece > p + p { margin-top: 1.1rem; }
   .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-text { line-height: 1.45; }
   .s-piece .s-piece__date { margin-bottom: 1.5rem; }
   .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
   .s-piece__back a { color: inherit; }
@@ -151,7 +156,8 @@
     backdrop-filter: blur(18px);
   }
   :root[data-arriving][data-site-theme="light"] body::after { background: rgba(242, 234, 211, 0.35); }
-</style>
+
+  @font-face { font-family: "Neat Handwriting"; src: url("../assets/fonts/neat-handwriting.woff2") format("woff2"); font-display: swap; }</style>
 </head>
 <body>
 <style>
@@ -793,7 +799,7 @@
 </header>
 <main class="s-main">
 <h1>Work</h1>
-<p>Projects I&#x27;ve built are aimed to address specific problems surrounding health equity in locations I&#x27;ve worked.</p>
+<p class="s-text">Projects I&#x27;ve built are aimed to address specific problems surrounding health equity in locations I&#x27;ve worked.</p>
 <section class="s-project"><h2 class="s-project__title">Recipe Finder</h2><style>
   /* Neat Handwriting: the clearer version of Divya's handwriting (assets/fonts/neat-handwriting),
      for the fish section's paragraphs and the note under the tables. Letters it doesn't have fall back to Rubik. */

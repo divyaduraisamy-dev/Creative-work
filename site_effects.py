@@ -31,6 +31,7 @@ import site_content as content
 
 SCRAPBOOK = Path(__file__).resolve().parent / "ui-scrapbook"
 CUSTOM = SCRAPBOOK / "custom-features"
+NEAT_FONT = CUSTOM / "assets" / "fonts" / "neat-handwriting" / "neat-handwriting.woff2"
 GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"
 
 
@@ -47,7 +48,8 @@ def _component(relative: str) -> str:
 
 @lru_cache(maxsize=None)
 def _data_uri(path: Path) -> str:
-    types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
+    types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
+             ".woff2": "font/woff2"}
     mime = types.get(path.suffix.lower(), "image/svg+xml")
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
@@ -164,6 +166,16 @@ _PAGE_CSS = """
   :root .c-site-header { --font-ui: "Rubik", sans-serif; }
   .c-pet__caption, .c-torch__hint, .c-walk__btn, .c-waves__credit, .c-loader__hint { font-family: "Rubik", sans-serif !important; }
 
+  /* Paragraphs are in Neat Handwriting, the clearer version of Divya's handwriting
+     (ui-scrapbook/custom-features/assets/fonts/neat-handwriting), set larger because it runs small.
+     Headings, the header and labels stay as they are. The font file is embedded in the page. */
+  @font-face { font-family: "Neat Handwriting"; src: url("__NEAT_FONT__") format("woff2"); font-display: swap; }
+  [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, .s-text {
+    font-family: "Neat Handwriting", "Rubik", sans-serif;
+    font-size: 1.4rem;  /* the same size as divyaduraisamy.org (Streamlit shrinks its own text on small screens) */
+    line-height: 1.35;
+  }
+
   .stApp { transition: none; }
   :root[data-site-theme="light"] .stApp { background-color: #f2ead3; color: #000000; }
   :root[data-site-theme="light"] .stApp h1,
@@ -213,7 +225,8 @@ def site_header(
     options = json.dumps({"linkedin": linkedin, "email": email_code, "page": page,
                           "transition": {"logoStyle": transition_logo}})
     start = restore_svg + f'CustomSiteHeader.init("c-site-header", {options});'
-    page_css = _PAGE_CSS.replace("<style>", '<style id="site-effects-page-css">', 1)
+    page_css = (_PAGE_CSS.replace("<style>", '<style id="site-effects-page-css">', 1)
+                .replace("__NEAT_FONT__", _data_uri(NEAT_FONT)))
     st.html(page_css + markup + _script(["custom-features/interactions.js"], start), unsafe_allow_javascript=True)
     if pages:
         # One hidden in-app link per page (hidden by _PAGE_CSS); the header clicks them.

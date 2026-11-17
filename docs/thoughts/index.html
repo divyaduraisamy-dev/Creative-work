@@ -47,6 +47,10 @@
   .s-main h1 { font-size: 2.75rem; padding: 1.25rem 0 0.5rem; }
   .s-main h2 { font-size: 2.25rem; padding: 1rem 0 0.25rem; scroll-margin-top: 1rem; }
   .s-main p { margin: 0; }
+  /* Paragraphs are in Neat Handwriting, the clearer version of Divya's handwriting
+     (ui-scrapbook/custom-features/assets/fonts/neat-handwriting). It runs small for its size, so
+     it is set larger; letters it doesn't have fall back to Rubik. Headings, menus and labels stay. */
+  .s-text { font-family: "Neat Handwriting", "Rubik", sans-serif; font-size: 1.4em; line-height: 1.35; }
   @media (max-width: 640px) {
     .s-main { padding: 0 1rem 1rem; }
     .s-main h1 { font-size: 2.25rem; }
@@ -72,6 +76,7 @@
   .s-piece { max-width: 42rem; }
   .s-piece > p + p { margin-top: 1.1rem; }
   .s-piece { font-size: 1.075rem; line-height: 1.75; }
+  .s-piece .s-text { line-height: 1.45; }
   .s-piece .s-piece__date { margin-bottom: 1.5rem; }
   .s-piece .s-piece__back { margin-top: 2.5rem; font-size: 0.95rem; }
   .s-piece__back a { color: inherit; }
@@ -151,7 +156,8 @@
     backdrop-filter: blur(18px);
   }
   :root[data-arriving][data-site-theme="light"] body::after { background: rgba(242, 234, 211, 0.35); }
-</style>
+
+  @font-face { font-family: "Neat Handwriting"; src: url("../assets/fonts/neat-handwriting.woff2") format("woff2"); font-display: swap; }</style>
 </head>
 <body>
 <style>
@@ -793,8 +799,8 @@
 </header>
 <main class="s-main">
 <h1>Thoughts</h1>
-<p>I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.</p>
-<ul class="s-thoughts"><li><a href="../thoughts/legacy/"><span class="s-thoughts__title">Legacy</span></a><time datetime="2026-09-29">September 29, 2026</time><p>Who decides what actions live on in history?</p><p>Leaves may never see the light they need.<br>Still, nutrients get sent their way,<br>As if hope for light is never lost.</p><p>Some fight for their light,<br>Not caring what it costs others.<br>Some reach the light,<br>But get overtaken.</p><p>Brief moments of light,<br>Earned or given,<br>Is how history is made.</p></li><li><a href="../thoughts/perspective/"><span class="s-thoughts__title">Perspective</span></a><time datetime="2025-04-12">April 12, 2025</time><p>I’ve watched as people live their lives, me assuming things about them and them assuming things about me. When someone tells you to look at life in a different light, they are really telling you to imagine what you cannot see.</p></li></ul>
+<p class="s-text">I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.</p>
+<ul class="s-thoughts"><li><a href="../thoughts/legacy/"><span class="s-thoughts__title">Legacy</span></a><time datetime="2026-09-29">September 29, 2026</time><p class="s-text">Who decides what actions live on in history?</p><p class="s-text">Leaves may never see the light they need.<br>Still, nutrients get sent their way,<br>As if hope for light is never lost.</p><p class="s-text">Some fight for their light,<br>Not caring what it costs others.<br>Some reach the light,<br>But get overtaken.</p><p class="s-text">Brief moments of light,<br>Earned or given,<br>Is how history is made.</p></li><li><a href="../thoughts/perspective/"><span class="s-thoughts__title">Perspective</span></a><time datetime="2025-04-12">April 12, 2025</time><p class="s-text">I’ve watched as people live their lives, me assuming things about them and them assuming things about me. When someone tells you to look at life in a different light, they are really telling you to imagine what you cannot see.</p></li></ul>
 <p class="s-next-wrap"><button class="s-next" id="s-next" type="button" data-open-contact>Next: Contact <span class="s-next__arrow" aria-hidden="true">→</span></button></p>
 <style>
   .c-waves {
