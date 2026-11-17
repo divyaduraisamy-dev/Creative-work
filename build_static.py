@@ -463,11 +463,25 @@ def gate_markup(prefix: str) -> str:
     return html
 
 
-def header_markup() -> str:
-    """The header, with data-members on links to members-only pages (hidden from guests)."""
+def header_markup(pages: dict[str, str]) -> str:
+    """The header, with this page's addresses written in and data-members on links to members-only
+    pages (hidden from guests).
+
+    The shared header file uses relative links ("work", "./", "./#about"), which are read from the
+    folder the page is in: on /work/, "work" meant /work/work (a 404) until the script replaced it,
+    so search engines, link previews and visitors without JavaScript got broken links. The logo and
+    About were never replaced. Writing the real addresses here fixes all of them."""
     members = {n for n, p in domain_pages().items() if p.members}
+    markup = component("custom-features/site-header.html")
+    markup = re.sub(r'<a ([^>]*?)href="[^"]*"([^>]*data-go="([^"]+)")',
+                    lambda m: f'<a {m.group(1)}href="{esc(pages[m.group(3)])}"{m.group(2)}' if m.group(3) in pages else m.group(0),
+                    markup)
+    markup = markup.replace('class="c-site-header__cell c-site-header__logo" href="./"',
+                            f'class="c-site-header__cell c-site-header__logo" href="{esc(pages["home"])}"', 1)
+    markup = markup.replace('href="./#about" data-scroll-to="about"',
+                            f'href="{esc(pages["home"])}#about" data-scroll-to="about"', 1)
     return re.sub(r'<a ([^>]*data-go="([^"]+)")', lambda m: f'<a data-members {m.group(1)}' if m.group(2) in members else m.group(0),
-                  component("custom-features/site-header.html"))
+                  markup)
 
 
 def domain_pages() -> dict[str, Page]:
@@ -716,7 +730,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 <body>
 {component("custom-features/logo-loader.html")}
 {gate_markup(prefix)}
-{header_markup()}
+{header_markup(pages)}
 <main class="s-main">
 {chr(10).join(body)}
 </main>
