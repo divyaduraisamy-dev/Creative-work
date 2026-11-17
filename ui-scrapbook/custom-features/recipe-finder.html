@@ -21,7 +21,7 @@
 -->
 <style>
   /* Neat Handwriting: the clearer version of Divya's handwriting (assets/fonts/neat-handwriting),
-     for the fish section's paragraphs. Letters it doesn't have fall back to Rubik. */
+     for the fish section's paragraphs and the note under the tables. Letters it doesn't have fall back to Rubik. */
   @font-face {
     font-family: "Neat Handwriting";
     src: url('assets/fonts/neat-handwriting.woff2') format("woff2");
@@ -94,7 +94,7 @@
   .c-recipe__bubble { margin: 0; padding: 0; width: min(100%, 11rem); }
   .c-recipe__bubble .c-draw { width: 100%; }
   .c-recipe__say { max-width: 36rem; }
-  .c-recipe__say p, .c-recipe__say ul {
+  .c-recipe__say p, .c-recipe__say ul, .c-recipe__note {
     margin: 0;
     font-family: "Neat Handwriting", "Rubik", sans-serif;
     font-size: 1.4em;  /* handwriting runs small for its size */
@@ -119,7 +119,7 @@
   .c-recipe__point--add .c-recipe__fish { cursor: pointer; }
 
   .c-recipe__tables { grid-area: tables; width: 100%; max-width: 30rem; }
-  .c-recipe__note { grid-area: note; max-width: 40rem; line-height: 1.5; }
+  .c-recipe__note { grid-area: note; max-width: 40rem; }
 
   /* The add-a-recipe form. */
   /* In Divya's Handwriting (the font the password page loads); missing letters fall back to Rubik. */
