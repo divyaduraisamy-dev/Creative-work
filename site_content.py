@@ -191,7 +191,7 @@ PAGES = {
         Text("Projects I've built are aimed to address specific problems surrounding health equity in locations I've worked.", only="domain"),
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.", only="streamlit"),
         Project("Recipe Finder", "https://macsc-recipe-finder-1.streamlit.app/",
-                "I built this app as a resource to help food pantry clients make the most of the ingredients they receive. Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access. The app allows anyone to select the ingredients they received and instantly see recipes that match, sorted by how quickly they can be made. Users can also filter by cooking appliance, difficulty level, dietary needs, and time, so it works whether someone has a full kitchen or just a microwave",
+                "I built this app as a resource to help food pantry clients make the most of the ingredients they receive. Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access. The app allows anyone to select the ingredients they received and instantly see recipes that match, sorted by how quickly they can be made. Users can also filter by cooking appliance, difficulty level, dietary needs, and time, so it works whether someone has a full kitchen or just a microwave.",
                 drawing="ui-scrapbook/custom-features/assets/recipe-bowl.webp"),
         Waves(),
     ]),
