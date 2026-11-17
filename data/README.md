@@ -18,3 +18,23 @@ Used by `heat_model.py` to train the walk planner on the KOVU page (from my IST7
 and by `build_walk_table.py` to precompute it for the plain web version.
 For education and general guidance only, not veterinary advice. Please cite the studies above if
 you use these numbers.
+
+# foodkeeper.json
+
+USDA FSIS FoodKeeper data, English (public domain, U.S. government work). Listed on the
+"FSIS FoodKeeper Data" page on catalog.data.gov, which links to
+https://www.fsis.usda.gov/shared/data/EN/foodkeeper.json. The file says it is version 128
+(FMA-Data-v128.xlsx), last modified September 6, 2018.
+
+The FSIS site turns away automated downloads (HTTP 403), so this copy came from the Internet
+Archive's snapshot of that address (July 2, 2025). Its fingerprint (SHA-1
+676CHRGJHGCERQXXKMAAPV2QL2MK5WG3, compressed) matches the archive's October 6, 2026 capture, so it
+is the same file FSIS was still serving then. Saved here uncompressed.
+
+Six sheets: Version, Category, Product (661 foods, with pantry / refrigerator / freezer times,
+each as Min, Max and Metric, plus "DOP_" = from the date of purchase and "After_Opening" /
+"After_Thawing" times), CookingTips, CookingMethods and Data Dictionary.
+
+Used by `keep_or_toss.py`, which reads the storage times for the Keep or Toss app while the site
+builds (see `keep_or_toss_content.py`). To update, replace this file with a newer download and
+rebuild; the build prints the version it read.
