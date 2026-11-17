@@ -51,8 +51,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-APP_NAME = "Keep or Toss"
-APP_SLUG = "keep-or-toss"   # divyaduraisamy.org/keep-or-toss/ (changing APP_NAME doesn't change this)
+APP_NAME = "Keep, Toss, Refrigerate, or Freeze"
+APP_SLUG = "keep-or-toss"   # divyaduraisamy.org/keep-or-toss/ (changing APP_NAME doesn't change this,
+                            # so links people have saved keep working)
 MEMBERS_ONLY = True         # friends only for now; set to False to release it to everyone
 
 # Where food goes. A plan's place is one of these.
@@ -302,6 +303,40 @@ SOURCES = {
                           "https://extension.usu.edu/preserve-the-harvest/dev/berries-1"),
     "illinois_berries": Source("Small Fruits: Handling Care", "University of Illinois Extension",
                                "https://extension.illinois.edu/small-fruits/handling-care"),
+    "nchfp_freezing": Source("Freezing", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze"),
+    "nchfp_blanching": Source("Blanching Vegetables", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/freeze-general-information/blanching-vegetables/"),
+    "nchfp_not_well": Source("Foods That Do Not Freeze Well", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/freeze-general-information/foods-that-do-not-freeze-well/"),
+    "nchfp_how_long": Source("How Long Can I Store Frozen Foods?", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/freeze-general-information/how-long-can-i-store-frozen-foods/"),
+    "nchfp_fresh_not_frozen": Source("Fresh, Not Frozen", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/blog/fresh-not-frozen"),
+    "nchfp_labeling": Source("Packaging and Labeling Foods", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/freeze-general-information/packaging-and-labeling-foods/"),
+    "nchfp_thawing": Source("Thawing and Preparing Foods for Serving", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/freeze-general-information/thawing-and-preparing-foods-for-serving/"),
+    "nchfp_apples": Source("Freezing Apples", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/fruits/freezing-apples/"),
+    "nchfp_peaches": Source("Freezing Peaches or Nectarines", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/fruits/freezing-peaches-or-nectarines/"),
+    "nchfp_plums": Source("Freezing Plums", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/fruits/freezing-plums/"),
+    "nchfp_mangos": Source("Freezing Mangos", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/fruits/freezing-mangos/"),
+    "nchfp_onions": Source("Freezing Onions", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/vegetable/freezing-onions/"),
+    "nchfp_peppers": Source("Freezing Bell or Sweet Peppers", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/vegetable/freezing-bell-or-sweet-peppers/"),
+    "nchfp_tomatoes": Source("Freezing Tomatoes", "National Center for Home Food Preservation",
+                     "https://nchfp.uga.edu/how/freeze/vegetable/freezing-tomatoes/"),
+    "usu_freezing_fruit": Source("Fruit Freezing", "Utah State University Extension",
+                     "https://extension.usu.edu/preserve-the-harvest/research/fruit-freezing"),
+    "montana_freezing": Source("Freezing Fruits (MontGuide)", "Montana State University Extension",
+                     "https://ccfruitandnuts.ucanr.edu/sites/default/files/2020-12/340873.pdf"),
+    "ucdavis_storing": Source("Storing Fresh Fruits and Vegetables for Better Taste", "University of California, Davis",
+                     "https://homeorchard.ucanr.edu/files/115275.pdf"),
     "nchfp_tray": Source("Dry or Tray Packing for Fruits", "National Center for Home Food Preservation",
                          "https://nchfp.uga.edu/how/freeze/freeze-general-information/dry-or-tray-packing-for-fruits/"),
     "umn_freezing_fruit": Source("How to Freeze Fruit Safely", "University of Minnesota Extension",
@@ -372,6 +407,7 @@ FOODS: list[Food] = [
                 Fact("Keep them away from apples and avocados, which make them ripen faster.", "unl_bananas"),
                 Fact("Wrap the stems in plastic wrap or foil to slow ripening a little.", "unl_bananas"),
                 Fact("Don't put green bananas in the fridge. They won't ripen the right way.", "usu_bananas", "msu_bananas"),
+                Fact("In the fridge, banana skins turn black and the bananas don't get sweet.", "ucdavis_storing"),
             ]),
             Plan("Bake or blend with them later", FREEZER, FK(251, "Freeze"), how=[
                 Fact("Peel ripe bananas first. Slice them and lay the slices on a lined baking sheet.", "unl_bananas"),
@@ -407,15 +443,24 @@ FOODS: list[Food] = [
                 Fact("Once they're ripe, keep them unwashed in a plastic bag in the crisper drawer.", "pnw612"),
                 Fact("Wash them under running water right before you eat them.", "fda_produce"),
             ]),
+            Plan("Freeze slices for baking", FREEZER, Hand("About 8 to 12 months", "nchfp_how_long"), how=[
+                Fact("Wash, peel and core them, then slice.", "nchfp_apples"),
+                Fact("Add a little ascorbic acid (vitamin C) so the slices don't turn brown.", "nchfp_apples"),
+                Fact("Freeze the slices in one layer on a tray, then bag them as soon as they're frozen.", "nchfp_tray"),
+                Fact("Label the bag with what's inside and the date.", "nchfp_labeling"),
+            ]),
         ],
         use_soon=[Fact("A bruise or damaged spot: cut it away before you eat or cook the apple.", "fda_produce")],
         toss=[Fact("If it looks rotten, throw it out.", "fda_produce")],
+        ideas=[Fact("Freeze apple slices for pies and baking.", "nchfp_apples")],
         mold=Mold(TOSS, [
             Fact("USDA's mold chart doesn't name apples. It says some firm produce can be trimmed, but apples aren't on the list, so play it safe.", "fsis_mold"),
             Fact("Mold spreads quickly in fruit. Check anything the moldy apple touched.", "fsis_mold"),
         ]),
         review=["Counter time: FoodKeeper says about 3 weeks; Pacific Northwest Extension says 1 to 2 days at room temperature. Shown: FoodKeeper.",
-                "Mold: apples aren't named on the FSIS chart (firm produce can be trimmed). I used \"toss\" to be safe; switch to CUT if you decide apples count as firm.",],
+                "Mold: apples aren't named on the FSIS chart (firm produce can be trimmed). I used \"toss\" to be safe; switch to CUT if you decide apples count as firm.",
+                "Freezer time for apple slices (8 to 12 months) is the National Center for Home Food Preservation's general "
+                "fruit time; FoodKeeper's 8 months is for cooked apples."],
     ),
     Food(
         "avocados", "Avocados", "fruits", also_called=["avocado", "guacamole"],
@@ -453,10 +498,13 @@ FOODS: list[Food] = [
             Plan("Eat them soon", COUNTER, FK(306, "Pantry"), how=[
                 Fact("Once a tomato is ripe, it keeps about 7 more days on the counter.", "foodkeeper"),
                 Fact("Keep them at room temperature, out of the sun. Wash them just before eating.", "umaine_storing"),
-                Fact("The fridge takes away flavor. Only put very ripe tomatoes in the fridge, to stop them from ripening more.", "csu_tomatoes", "umaine_storing"),
+                Fact("The fridge takes away flavor. Only put very ripe tomatoes in the fridge, to stop them from ripening more.", "csu_tomatoes", "umaine_storing", "ucdavis_storing"),
                 Fact("Cover and refrigerate cut tomatoes.", "csu_tomatoes"),
             ]),
-            Plan("Cook with them later", FREEZER, FK(306, "DOP_Freeze")),
+            Plan("Cook with them later", FREEZER, FK(306, "DOP_Freeze"), how=[
+                Fact("Core and peel them, then freeze them whole or in pieces.", "nchfp_tomatoes"),
+                Fact("Use them only for cooking: they won't be firm when they thaw.", "nchfp_tomatoes"),
+            ]),
         ],
         toss=[Fact("If it looks rotten, throw it out.", "fda_produce")],
         mold=Mold(TOSS, [
@@ -563,7 +611,7 @@ FOODS: list[Food] = [
         ]),
         ideas=[
             Fact("Cooking greens like spinach can be blanched for 2 minutes, cooled and frozen.", "nchfp_greens"),
-            Fact("Lettuce doesn't freeze well, so plan to eat it fresh.", "foodkeeper"),
+            Fact("Lettuce doesn't freeze well. It comes out limp and soggy, so plan to eat it fresh.", "foodkeeper", "nchfp_not_well"),
         ],
         review=["Paper towel: UNH Extension says a damp towel; another extension page reportedly says dry. Left out until it's settled.",
                 "Colorado State Extension says to rinse bagged salad; FDA says washed, ready to eat greens don't need it. Shown: FDA.",
@@ -638,6 +686,7 @@ FOODS: list[Food] = [
             ]),
             Plan("Chop extras and freeze them", FREEZER, FK(294, "DOP_Freeze"), how=[
                 Fact("Extra onions can be frozen.", "umaine_onions"),
+                Fact("Peel and dice them. No need to blanch.", "nchfp_onions"),
             ]),
         ],
         use_soon=[Fact("Sweet onions don't keep as long. Use them first.", "umaine_onions")],
@@ -663,6 +712,7 @@ FOODS: list[Food] = [
             ]),
             Plan("Cook with it later", FREEZER, FK(276, "DOP_Freeze"), how=[
                 Fact("Boil it for 3 minutes first, then cool it quickly, drain and freeze.", "nchfp_broccoli"),
+                Fact("Time it. Blanching too briefly is worse than not blanching at all.", "nchfp_blanching"),
             ]),
         ],
         use_soon=[Fact("Yellow buds mean it's getting old. Use it soon.", "ndsu_vegetables")],
@@ -1098,6 +1148,40 @@ BASICS: list[Rule] = [
         Fact("Freezer burn makes food dry in spots, but it doesn't make it unsafe.", "fsis_freezing"),
         Fact("Thaw food in the fridge, in cold water, or in the microwave. Never on the counter.", "fsis_thaw"),
     ]),
+    Rule("Freezing fruits and vegetables", [
+        Fact("Most fruits and vegetables can be frozen, but some need a step first. Peel bananas. Peel, core and slice apples. "
+             "Pit and cut fruits with a big pit, like peaches, nectarines, plums and mangoes.",
+             "nchfp_freezing", "unl_bananas", "nchfp_apples", "nchfp_peaches", "nchfp_plums", "nchfp_mangos"),
+        Fact("Wash produce before you freeze it. Freezing doesn't kill germs. It only pauses them, and they can grow again once the food thaws.",
+             "umn_freezing_fruit", "fsis_freezing"),
+        Fact("Spread cut pieces in one layer on a tray and freeze them, then bag them as soon as they're frozen. "
+             "They stay loose, so you can pour out just what you need, and bagging them right away helps prevent freezer burn.",
+             "nchfp_tray"),
+        Fact("Apples and peaches turn brown once they're cut. A little ascorbic acid (vitamin C) helps them keep their color. "
+             "Lemon juice works too, but not as well, and it can make the fruit taste tart.",
+             "nchfp_apples", "nchfp_peaches", "usu_freezing_fruit", "montana_freezing"),
+        Fact("Most vegetables need blanching first: a short dip in boiling water, then right into cold water. "
+             "It stops natural enzymes that would keep breaking down flavor, color and texture, even in the freezer.",
+             "nchfp_blanching"),
+        Fact("Follow the blanching time for each vegetable. Blanching too briefly is worse than not blanching at all.", "nchfp_blanching"),
+        Fact("Diced onions and raw bell peppers can go in the freezer without blanching.", "nchfp_onions", "nchfp_peppers"),
+        Fact("Label each bag with what's inside and the date.", "nchfp_labeling"),
+        Fact("At 0°F, most fruits and vegetables are at their best for 8 to 12 months. After that they're still safe, just lower in quality.",
+             "nchfp_how_long"),
+    ]),
+    Rule("What to expect after freezing", [
+        Fact("Watery, crunchy produce like lettuce, cucumbers, celery and radishes comes out limp and soggy, so it won't work in a salad.",
+             "nchfp_not_well", "nchfp_fresh_not_frozen"),
+        Fact("Tomatoes won't be firm after freezing, but they're fine for cooking.", "nchfp_tomatoes"),
+        Fact("Starchy vegetables like corn and peas hold up especially well.", "nchfp_fresh_not_frozen"),
+        Fact("Thawed fruit is softer than fresh, so it's best eaten with a few ice crystals still in it.", "nchfp_thawing"),
+        Fact("Handle anything you've thawed like fresh food.", "fsis_freezing"),
+    ]),
+    Rule("Colder isn't always better", [
+        Fact("Some produce does best on the counter. In the fridge, banana skins turn black and the bananas don't get sweet, "
+             "and tomatoes lose their flavor.", "ucdavis_storing"),
+        Fact("Other produce can ripen on the counter first, then move to the fridge.", "ucdavis_storing"),
+    ]),
     Rule("What the dates mean", [
         Fact("Under federal rules, dates on food are about quality, not safety. Infant formula is the one exception.", "fsis_dating"),
         Fact("\"Best if Used By\" means when the food will taste best. It's not a safety date. A \"Sell By\" date is for the store.", "fsis_dating"),
@@ -1189,7 +1273,7 @@ SCENARIOS: list[Scenario] = [
 WORK_ENTRY = {
     "drawing": "keep-or-toss",
     "alt": "A fridge with its door open, a banana and a milk carton on the shelves",
-    "link_text": "Open Keep or Toss",
+    "link_text": "Open the app",
     "points": [
         "Look up a food and see where to store it and how long it lasts.",
         "Learn the signs that it's time to use it soon, or toss it.",
