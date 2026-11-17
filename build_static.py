@@ -30,9 +30,10 @@ from pathlib import Path
 
 from PIL import Image
 
+import keep_or_toss as kot
 import site_content as content
-from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Project, RecipeFinder, Text, ThoughtsList, Title, Torch, WalkButton,
-                          WalkPlanner, Waves)
+from site_content import (Comic, Gallery, Heading, KeepOrToss, Page, Pet, Photo, Project, RecipeFinder, Text, ThoughtsList, Title, Torch,
+                          WalkButton, WalkPlanner, Waves)
 
 ROOT = Path(__file__).resolve().parent
 SCRAPBOOK = ROOT / "ui-scrapbook"
@@ -145,9 +146,9 @@ def page_url(page: Page) -> str:
     return SITE_URL + (page.path + "/" if page.path else "")
 
 
-def search_tags(page: Page, piece: Piece | None = None) -> str:
+def search_tags(page: Page, piece: Piece | None = None, app: kot.AppPage | None = None) -> str:
     """Head tags only search engines read: summary, main address, and who the site or piece is by."""
-    summary = piece.description if piece else DESCRIPTIONS[page.path]
+    summary = piece.description if piece else app.description if app else DESCRIPTIONS[page.path]
     tags = [f'<meta name="description" content="{esc(summary)}">',
             f'<link rel="canonical" href="{page_url(page)}">']
     if piece:
@@ -488,7 +489,16 @@ def domain_pages() -> dict[str, Page]:
     return {n: p for n, p in content.PAGES.items() if content.shown_on(p, "domain")}
 
 
-def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
+def app_page(app: kot.AppPage) -> Page:
+    """The site page for a Keep or Toss page: the app's body, then the waves (no Next link)."""
+    return Page(app.title, app.path, [Waves()], only="domain", members=kot.c.MEMBERS_ONLY)
+
+
+def kot_site() -> kot.Site:
+    return kot.Site(copy_asset=copy_asset, image_size=image_size)
+
+
+def render_page(name: str, page: Page, piece: Piece | None = None, app: kot.AppPage | None = None) -> str:
     depth = page.path.count("/") + 1 if page.path else 0
     prefix = "../" * depth
     pages = {n: (prefix + (p.path + "/" if p.path else "")) or "./" for n, p in domain_pages().items()}
@@ -510,10 +520,16 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                     + "".join(f"<p class=\"s-text\">{esc(par).replace(chr(10), '<br>')}</p>" for par in piece.paragraphs)
                     + f'<p class="s-piece__back"><a href="{pages["thoughts"]}">← All thoughts</a></p></article>')
 
+    if app:
+        body.append(app.body + (kot.data_script(app.data) if app.data else ""))
+        start.append("KeepOrToss.init();")
+
     for block in page.blocks:
         if not content.shown_on(block, "domain"):
             continue
-        if isinstance(block, Comic):
+        if isinstance(block, KeepOrToss):
+            body.append(kot.work_entry(kot_site(), prefix))
+        elif isinstance(block, Comic):
             # Each panel is a mask filled with the page's text colour, so it follows the theme.
             panels = "".join(
                 f'<li><span class="s-comic__panel" role="img" aria-label="{esc(alt)}" '
@@ -683,7 +699,7 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
             body.append(once("walk-forecast", component("custom-features/walk-forecast.html")))
             start.append(f'CustomWalkForecast.init("c-walk-forecast", {json.dumps({"table": table})});')
         elif isinstance(block, Waves):
-            if not piece:
+            if not piece and not app:
                 markup, inits = next_links(name, pages)
                 body.append(markup)
                 start.extend(inits)
@@ -709,6 +725,11 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
         script_tags.append(f'<script src="{GSAP_URL}"></script>')
         script_tags.append(f'<script src="{prefix}assets/js/wodniack-interactions.js"></script>')
     script_tags.append(f'<script src="{prefix}assets/js/interactions.js"></script>')
+    if app:
+        script_tags.append(f'<script src="{prefix}assets/keep-or-toss/keep-or-toss.js"></script>')
+    # Keep or Toss styles: the app's pages and the Work page entry.
+    app_styles = (f'<link rel="stylesheet" href="{prefix}assets/keep-or-toss/keep-or-toss.css">'
+                  if app or any(isinstance(b, KeepOrToss) for b in page.blocks) else "")
 
     NEAT_FONT = copy_asset(CUSTOM / "assets" / "fonts" / "neat-handwriting" / "neat-handwriting.woff2", "fonts")
     return f"""<!doctype html>
@@ -718,11 +739,11 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(OWNER_NAME if page.path == "" else f"{page.title} · {OWNER_NAME}")}</title>
 {'<meta name="robots" content="noindex">' if page.members else ""}
-{search_tags(page, piece)}
+{search_tags(page, piece, app)}
 <link rel="icon" href="{prefix}assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="{FONTS_URL}">
+<link rel="stylesheet" href="{FONTS_URL}">{chr(10) + app_styles if app_styles else ""}
 <script>{HEAD_JS}</script>
 <style>{PAGE_CSS}
   @font-face {{ font-family: "Neat Handwriting"; src: url("{prefix + NEAT_FONT}") format("woff2"); font-display: swap; }}</style>
@@ -744,6 +765,8 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
 
 
 def main() -> None:
+    # Keep or Toss content is checked first: a mistake stops the build before docs/ is cleared.
+    app_report = kot.check_or_stop()
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "assets" / "js").mkdir(parents=True)
@@ -757,6 +780,12 @@ def main() -> None:
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "index.html").write_text(render_page(name, page, piece), encoding="utf-8")
         print(f"wrote {(folder / 'index.html').relative_to(ROOT)}")
+    app_pages = kot.pages(kot_site(), app_report)
+    for app in app_pages:
+        folder = OUT / app.path
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "index.html").write_text(render_page(app.name, app_page(app), app=app), encoding="utf-8")
+    print(f"wrote {len(app_pages)} Keep or Toss pages in {(OUT / kot.c.APP_SLUG).relative_to(ROOT)}/")
     # GitHub Pages: serve the files as they are (no Jekyll processing).
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.
@@ -766,6 +795,7 @@ def main() -> None:
     urls = "".join(f"  <url><loc>{page_url(p)}</loc></url>\n" for p in domain_pages().values() if not p.members)
     urls += "".join(f"  <url><loc>{page_url(piece_page(pc))}</loc><lastmod>{pc.day.isoformat()}</lastmod></url>\n"
                     for pc in published if not piece_page(pc).members)
+    urls += "".join(f"  <url><loc>{page_url(app_page(a))}</loc></url>\n" for a in app_pages if not kot.c.MEMBERS_ONLY)
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
                                      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                      f"{urls}</urlset>\n", encoding="utf-8")
