@@ -12,6 +12,8 @@
  *     CustomWalkPlanner.init("c-walk-button");   // pulling the walk button opens the walk planner
  *     CustomWalkForecast.init("c-walk-forecast"); // the in-page walk planner (plain web version)
  *     CustomLinkPull.init("c-recipe-bowl");      // pulling a drawn link (the recipe bowl) opens it
+ *     CustomFishSwim.init("c-recipe");           // fish swim out of the can to their bubbles on scroll
+ *     CustomRecipeForm.init("c-recipe-form");    // the add-a-recipe form (opens from its bubble)
  *     CustomPasswordGate.init("c-password-gate", { hash, salt }); // password page (plain web version)
  *   init() accepts an element id or an element and is safe to call twice.
  *   CustomPageTransition (logo takes over the screen between pages) is started by the header.
@@ -2225,6 +2227,146 @@ const CustomLinkPull = {
   },
 };
 
+/* Fish swim ---------------------------------------------------------------------------------------
+ * Recipe Finder (recipe-finder.html): as the page scrolls, each fish swims from the painted fish
+ * on the can (options.from, shares of the can's box) to its place by its bubble, growing from the
+ * painted size (options.fromWidth of the can's width) and tilting nose up and down on the way.
+ * Scrolling back sends them back into the can. A fish leaves the can when the can reaches the
+ * middle of the screen and arrives when its own place does; if the page can't scroll that far,
+ * it arrives at the bottom of the page. Reduced motion: the fish stay where they belong.
+ */
+const CustomFishSwim = {
+  options: {
+    can: ".c-recipe__can",
+    fish: ".c-recipe__fish",
+    from: [0.55, 0.29],   // centre of the painted fish on the can
+    fromWidth: 0.3,       // a painted fish's width, as a share of the can's width
+    stagger: 0.08,        // each fish leaves this share of the screen height after the one before
+    tilt: 14,             // degrees, up and down
+    wiggles: 1.5,         // how many up-and-down tilts on the way
+  },
+
+  init(target = "c-recipe", options = {}) {
+    const root = CustomEnv.resolve(target);
+    if (!root || root.dataset.fishSwim || CustomEnv.reducedMotion) return;
+    root.dataset.fishSwim = "on";
+    const opts = { ...this.options, ...options };
+    const can = root.querySelector(opts.can);
+    const fish = Array.from(root.querySelectorAll(opts.fish));
+    if (!can || !fish.length) return;
+    let paths = [];
+    let frame = null;
+
+    const measure = () => {
+      fish.forEach((f) => { f.style.transform = ""; });
+      const vh = window.innerHeight;
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - vh);
+      const c = can.getBoundingClientRect();
+      const fromX = c.left + c.width * opts.from[0];
+      const fromY = c.top + c.height * opts.from[1];
+      const canTop = c.top + window.scrollY + c.height * opts.from[1];
+      paths = fish.map((f, i) => {
+        const r = f.getBoundingClientRect();
+        const start = Math.max(0, canTop - vh * 0.6) + i * vh * opts.stagger;
+        let end = Math.max(start + vh * 0.3, r.top + window.scrollY + r.height / 2 - vh * 0.5);
+        end = Math.min(end, maxScroll);
+        return {
+          dx: fromX - (r.left + r.width / 2),
+          dy: fromY - (r.top + r.height / 2),
+          scale: r.width ? (c.width * opts.fromWidth) / r.width : 1,
+          start, end,
+        };
+      });
+      update();
+    };
+
+    const update = () => {
+      frame = null;
+      const y = window.scrollY;
+      fish.forEach((f, i) => {
+        const p = paths[i];
+        if (!p) return;
+        const t = p.end > p.start ? Math.min(1, Math.max(0, (y - p.start) / (p.end - p.start))) : 1;
+        if (t >= 1) { f.style.transform = ""; f.style.opacity = ""; return; }
+        const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // ease in and out
+        const k = 1 - e;
+        const s = p.scale + (1 - p.scale) * e;
+        const tilt = Math.sin(t * Math.PI * 2 * opts.wiggles) * opts.tilt;
+        f.style.transform = `translate(${p.dx * k}px, ${p.dy * k}px) scale(${s}) rotate(${tilt}deg)`;
+        f.style.opacity = String(Math.min(1, t / 0.12));
+      });
+    };
+
+    const ask = () => { if (!frame) frame = requestAnimationFrame(update); };
+    window.addEventListener("scroll", ask, { passive: true });
+    window.addEventListener("resize", measure);
+    window.addEventListener("load", measure);
+    if ("ResizeObserver" in window) new ResizeObserver(() => measure()).observe(root);
+    measure();
+  },
+};
+
+/* Recipe form --------------------------------------------------------------------------------------
+ * The add-a-recipe form (recipe-finder.html). The bubble (options.toggle) and its fish open and close
+ * it. Dish name, ingredients and steps are required; the rest is optional. Answers go to a Google
+ * Form (options.action, its formResponse address; options.entries maps each field name to the
+ * form's entry ID). Without an action the send button stays off and says sending opens soon.
+ * A hidden "website" field catches bots: if it's filled in, nothing is sent.
+ */
+const CustomRecipeForm = {
+  options: { toggle: "c-recipe-add", action: "", entries: {} },
+
+  init(target = "c-recipe-form", options = {}) {
+    const form = CustomEnv.resolve(target);
+    if (!form || form.dataset.recipeForm) return;
+    form.dataset.recipeForm = "on";
+    const opts = { ...this.options, ...options };
+    const toggle = CustomEnv.resolve(opts.toggle);
+    const status = form.querySelector(".c-recipe-form__status");
+    const send = form.querySelector(".c-recipe-form__send");
+    const ready = Boolean(opts.action && Object.keys(opts.entries || {}).length);
+
+    const setOpen = (open) => {
+      form.hidden = !open;
+      if (toggle) toggle.setAttribute("aria-expanded", String(open));
+      if (open) {
+        form.scrollIntoView({ behavior: CustomEnv.reducedMotion ? "auto" : "smooth", block: "nearest" });
+        const first = form.querySelector("input, textarea");
+        if (first) setTimeout(() => first.focus({ preventScroll: true }), 300);
+      }
+    };
+    if (toggle) toggle.addEventListener("click", () => setOpen(form.hidden));
+    document.querySelectorAll(`[data-opens="${opts.toggle}"]`).forEach((el) => {
+      el.addEventListener("click", () => setOpen(form.hidden));
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!ready) return;
+      const data = new FormData(form);
+      if (data.get("website")) return;  // a bot filled the hidden field
+      const body = new URLSearchParams();
+      for (const [name, value] of data.entries()) {
+        const entry = opts.entries[name];
+        if (entry && String(value).trim()) body.append(entry, value);
+      }
+      send.disabled = true;
+      status.textContent = "Sending…";
+      try {
+        // Google Forms doesn't answer cross-site requests, so the reply can't be read; a network
+        // failure still throws.
+        await fetch(opts.action, { method: "POST", mode: "no-cors", body });
+        form.reset();
+        status.textContent = "Thank you! Your recipe was sent.";
+      } catch (err) {
+        status.textContent = "Sorry, it didn't send. Please check your connection and try again.";
+      } finally {
+        send.disabled = false;
+      }
+    });
+  },
+};
+
 window.CustomLogoLoader = CustomLogoLoader;
 window.CustomPetHead = CustomPetHead;
 window.CustomCornerLogo = CustomCornerLogo;
@@ -2236,4 +2378,6 @@ window.CustomWalkPlanner = CustomWalkPlanner;
 window.CustomWalkForecast = CustomWalkForecast;
 window.CustomNextLink = CustomNextLink;
 window.CustomLinkPull = CustomLinkPull;
+window.CustomFishSwim = CustomFishSwim;
+window.CustomRecipeForm = CustomRecipeForm;
 window.CustomPasswordGate = CustomPasswordGate;

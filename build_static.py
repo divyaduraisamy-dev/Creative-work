@@ -31,7 +31,7 @@ from pathlib import Path
 from PIL import Image
 
 import site_content as content
-from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Project, Text, ThoughtsList, Title, Torch, WalkButton,
+from site_content import (Comic, Gallery, Heading, Page, Pet, Photo, Project, RecipeFinder, Text, ThoughtsList, Title, Torch, WalkButton,
                           WalkPlanner, Waves)
 
 ROOT = Path(__file__).resolve().parent
@@ -191,6 +191,65 @@ def copy_asset(source: Path, folder: str = "") -> str:
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
     return f"assets/{relative}"
+
+
+RECIPE_ART = CUSTOM / "assets" / "recipe"
+# The add-a-recipe form: (name, label, kind, choices). Choice text must match the Google Form's options.
+RECIPE_FORM_OPTIONAL = [
+    ("time", "Cooking time", "select", ["Under 15 minutes", "15 to 30 minutes", "30 to 60 minutes", "Over an hour"]),
+    ("appliance", "Cooking appliance", "checkbox", ["Stovetop", "Oven", "Microwave", "Slow cooker", "Air fryer", "No cooking"]),
+    ("difficulty", "Difficulty", "radio", ["Easy", "Medium", "Hard"]),
+    ("dietary", "Dietary needs it fits", "checkbox", ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Nut-free", "Low sodium"]),
+    ("name", "Your name", "text", []),
+]
+
+
+def drawing(name: str, alt: str = "", ink_only: bool = False) -> str:
+    """A two-layer drawing from assets/recipe: colours as an <img>, ink as a mask in the text colour."""
+    ink_file = RECIPE_ART / (f"{name}.webp" if ink_only else f"{name}-ink.webp")
+    ink = copy_asset(ink_file, "recipe")
+    role = f' role="img" aria-label="{esc(alt)}"' if alt else ' aria-hidden="true"'
+    if ink_only:
+        w, h = image_size(ink_file)
+        return (f'<span class="c-draw c-draw--ink-only"{role}><span class="c-draw__ink" '
+                f'style="--ink: url(\'{{prefix}}{ink}\'); --ratio: {w} / {h}"></span></span>')
+    color_file = RECIPE_ART / f"{name}-color.webp"
+    color = copy_asset(color_file, "recipe")
+    w, h = image_size(color_file)
+    return (f'<span class="c-draw"{role}><img class="c-draw__color" src="{{prefix}}{color}" alt="" '
+            f'width="{w}" height="{h}" decoding="async">'
+            f'<span class="c-draw__ink" style="--ink: url(\'{{prefix}}{ink}\')"></span></span>')
+
+
+def recipe_form(block) -> str:
+    ready = bool(block.form_action and block.form_entries)
+    def optional(name, label, kind, choices):
+        if kind == "text":
+            return (f'<div><label for="c-recipe-{name}">{esc(label)}</label>'
+                    f'<input type="text" id="c-recipe-{name}" name="{name}" maxlength="80" autocomplete="off"></div>')
+        if kind == "select":
+            opts = '<option value="">Choose one</option>' + "".join(f'<option>{esc(c)}</option>' for c in choices)
+            return f'<div><label for="c-recipe-{name}">{esc(label)}</label><select id="c-recipe-{name}" name="{name}">{opts}</select></div>'
+        boxes = "".join(f'<label><input type="{kind}" name="{name}" value="{esc(c)}"> {esc(c)}</label>' for c in choices)
+        return f'<fieldset><legend>{esc(label)}</legend><div class="c-recipe-form__choices">{boxes}</div></fieldset>'
+    status = "" if ready else "Sending opens soon. Thank you for your patience!"
+    return (
+        '<form class="c-recipe-form" id="c-recipe-form" hidden>'
+        '<div><label for="c-recipe-dish">Dish name</label>'
+        '<input type="text" id="c-recipe-dish" name="dish" required maxlength="120" autocomplete="off"></div>'
+        '<div><label for="c-recipe-ingredients">Ingredients <span class="c-recipe-form__hint">(one per line)</span></label>'
+        '<textarea id="c-recipe-ingredients" name="ingredients" required maxlength="3000" '
+        'placeholder="1 can of chickpeas&#10;1 onion"></textarea></div>'
+        '<div><label for="c-recipe-steps">Steps</label>'
+        '<textarea id="c-recipe-steps" name="steps" required maxlength="5000"></textarea></div>'
+        '<details><summary>More details (optional)</summary><div class="c-recipe-form__optional">'
+        + "".join(optional(*f) for f in RECIPE_FORM_OPTIONAL) +
+        '</div></details>'
+        '<div class="c-recipe-form__trap" aria-hidden="true"><label for="c-recipe-website">Website</label>'
+        '<input type="text" id="c-recipe-website" name="website" tabindex="-1" autocomplete="off"></div>'
+        f'<button type="submit" class="c-recipe-form__send"{"" if ready else " disabled"}><span>Send recipe</span></button>'
+        f'<p class="c-recipe-form__status" role="status">{esc(status)}</p>'
+        '</form>')
 
 
 # Page-wide styles: what Streamlit's theme gave the app (black page, cream text, Londrina Solid
@@ -466,6 +525,38 @@ def render_page(name: str, page: Page, piece: Piece | None = None) -> str:
                 body.append(f'<section class="s-gallery" aria-labelledby="s-gallery-{slug}">'
                             f'<h2 id="s-gallery-{slug}">{esc(block.heading)}</h2>'
                             f'<ul class="s-gallery__items">{items}</ul></section>')
+        elif isinstance(block, RecipeFinder):
+            bowl_art = prefix + copy_asset(ROOT / "ui-scrapbook/custom-features/assets/recipe-bowl.webp")
+            bowl = component("custom-features/recipe-bowl.html")
+            bowl = bowl.replace("url('assets/recipe-bowl.webp')", f"url('{bowl_art}')")
+            bowl = bowl.replace('href="#"', f'href="{esc(block.url)}"', 1)
+            fish = drawing("fish")
+            how = (f"<p>{esc(block.how)}</p><ul>" + "".join(f"<li>{esc(x)}</li>" for x in block.how_points)
+                   + "</ul>" + (f"<p>{esc(block.how_after)}</p>" if block.how_after else ""))
+            points = (
+                f'<li class="c-recipe__point"><span class="c-recipe__fish">{fish}</span><div class="c-recipe__say">'
+                f'<h3 class="c-recipe__bubble">{drawing("bubble-why", "Why?", True)}</h3><p>{esc(block.why)}</p></div></li>'
+                f'<li class="c-recipe__point"><span class="c-recipe__fish">{fish}</span><div class="c-recipe__say">'
+                f'<h3 class="c-recipe__bubble">{drawing("bubble-how", "How it works", True)}</h3>{how}</div></li>'
+                f'<li class="c-recipe__point c-recipe__point--add"><span class="c-recipe__fish" data-opens="c-recipe-add">{fish}</span>'
+                f'<div class="c-recipe__say"><h3 class="c-recipe__bubble"><button type="button" class="c-recipe__add" id="c-recipe-add" '
+                f'aria-expanded="false" aria-controls="c-recipe-form">{drawing("bubble-add", "Add a recipe", True)}</button></h3>'
+                + (f"<p>{esc(block.add)}</p>" if block.add else "") + f'</div>{recipe_form(block)}</li>')
+            markup = (
+                once("recipe-finder", component("custom-features/recipe-finder.html"))
+                + '<div class="c-recipe" id="c-recipe" data-source="custom">'
+                + f'<div class="c-recipe__bowl">{once("recipe-bowl", bowl)}</div>'
+                + f'<div class="c-recipe__can">{drawing("can", "A can of fish above a hand pointing at the bowl: Try it out")}</div>'
+                + f'<ul class="c-recipe__points">{points}</ul>'
+                + f'<div class="c-recipe__tables">{drawing("tables", "Two tables at a food pantry, one with paper bags of vegetables, one with tote bags of groceries")}</div>'
+                + f'<p class="c-recipe__note">{esc(block.note)}</p></div>')
+            body.append('<section class="s-project"><h2 class="s-project__title">Recipe Finder</h2>'
+                        + markup.replace("{prefix}", prefix) + "</section>")
+            start.append(f'CustomPetHead.init("c-recipe-bowl", {json.dumps(WALK_OPTIONS)});')
+            start.append('CustomLinkPull.init("c-recipe-bowl");')
+            start.append('CustomFishSwim.init("c-recipe");')
+            start.append(f'CustomRecipeForm.init("c-recipe-form", '
+                         f'{json.dumps({"toggle": "c-recipe-add", "action": block.form_action, "entries": block.form_entries})});')
         elif isinstance(block, Project):
             if block.drawing:
                 # The drawing is the link: pull it (or click) to open the project in a new tab.

@@ -1,0 +1,181 @@
+<!--
+  Component: recipe-finder
+  Source:    custom (Divya's own drawings and layout; code written from scratch)
+  Notes:     The Recipe Finder section on the Work page (divyaduraisamy.org), laid out like Divya's
+             page-layout drawing. build_static.py writes the markup from RecipeFinder in
+             site_content.py; this file holds the styles.
+               - The bowl ("Show me recipes", recipe-bowl.html) is the link to the app: pull or click.
+               - The can with the hand and "Try it out" points at the bowl.
+               - Three fish, each with a drawn bubble: why?, How it works, add a recipe. As you
+                 scroll they swim out of the can to their bubbles, tilting nose up and down
+                 (CustomFishSwim). With reduced motion, or without interactions.js, they just sit there.
+               - add a recipe (the bubble or its fish) opens a short form (CustomRecipeForm).
+               - The tables of food along the bottom, with the note under them.
+             Each drawing has two layers: the black ink is a mask over the page's text colour (cream
+             on black, black on cream) and the colours (blue fish, food) sit under it as they are.
+             Wide screens: bowl | can | fish column, tables under the bowl and can. Medium: bowl and
+             can side by side, fish and tables below. Phones: one column.
+  Hooks:     id="c-recipe" (CustomFishSwim.init("c-recipe")), .c-recipe__can, .c-recipe__fish,
+             id="c-recipe-form" (CustomRecipeForm.init("c-recipe-form", {...})), id="c-recipe-add"
+  Tokens:    color.text, layout.recipe-gap
+-->
+<style>
+  .c-recipe {
+    --color-text: #f2ead3;
+    --layout-recipe-gap: clamp(1rem, 3vw, 2.5rem);
+
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.8fr) minmax(0, 1.25fr);
+    grid-template-areas:
+      "bowl   can    points"
+      "tables tables points"
+      "note   note   points";
+    align-items: start;
+    gap: var(--layout-recipe-gap);
+    margin-top: 1.5rem;
+    color: var(--color-text);
+  }
+
+  :root[data-site-theme="light"] .c-recipe { --color-text: #000000; }
+
+  /* A drawing: colours underneath, ink on top in the text colour. */
+  .c-draw { position: relative; display: block; }
+  .c-draw__color { display: block; width: 100%; height: auto; }
+  .c-draw__ink {
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    -webkit-mask: var(--ink) center / 100% 100% no-repeat;
+    mask: var(--ink) center / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+  .c-draw--ink-only .c-draw__ink { position: static; display: block; aspect-ratio: var(--ratio); }
+
+  .c-recipe__bowl { grid-area: bowl; align-self: center; }
+  .c-recipe .c-linkdraw { width: 100%; margin: 0; }
+
+  .c-recipe__can { grid-area: can; width: 100%; max-width: 17rem; justify-self: center; }
+
+  .c-recipe__points {
+    grid-area: points;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+  }
+
+  .c-recipe__point {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 0 1rem;
+    align-items: start;
+  }
+
+  .c-recipe__fish {
+    position: relative;
+    z-index: 2; /* swims over the can and the text */
+    width: 100%;
+    max-width: 10rem;
+    justify-self: end;
+    margin-top: 0.75rem;
+    transform-origin: 60% 50%;
+    will-change: transform;
+  }
+
+  .c-recipe__say { display: grid; gap: 0.6rem; }
+  .c-recipe__bubble { margin: 0; padding: 0; width: min(100%, 11rem); }
+  .c-recipe__bubble .c-draw { width: 100%; }
+  .c-recipe__say p, .c-recipe__say ul { margin: 0; line-height: 1.5; }
+  .c-recipe__say ul { padding-left: 1.2rem; }
+
+  /* add a recipe: the bubble and its fish are one button. */
+  .c-recipe__add {
+    display: block;
+    width: min(100%, 11rem);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .c-recipe__add:hover, .c-recipe__add:focus-visible { transform: rotate(-3deg) scale(1.04); }
+  .c-recipe__add:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 2rem; }
+  .c-recipe__point--add .c-recipe__fish { cursor: pointer; }
+
+  .c-recipe__tables { grid-area: tables; width: 100%; }
+  .c-recipe__note { grid-area: note; max-width: 40rem; line-height: 1.5; }
+
+  /* The add-a-recipe form. */
+  /* In Divya's Handwriting (the font the password page loads); missing letters fall back to Rubik. */
+  .c-recipe-form {
+    grid-column: 1 / -1; display: grid; gap: 0.9rem; margin-top: 0.5rem;
+    font-family: "Divyas Handwriting", "Rubik", sans-serif;
+    font-size: 1.4rem;
+    line-height: 1.3;
+  }
+  .c-recipe-form ::placeholder { color: inherit; opacity: 0.5; }
+  .c-recipe-form[hidden] { display: none; }
+  .c-recipe-form label, .c-recipe-form legend { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+  .c-recipe-form .c-recipe-form__hint { font-weight: 400; opacity: 0.7; }
+  .c-recipe-form input[type="text"], .c-recipe-form textarea, .c-recipe-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.6rem;
+    border: 1.5px solid currentColor;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+  .c-recipe-form select option { color: #000000; }
+  .c-recipe-form textarea { min-height: 6rem; resize: vertical; }
+  .c-recipe-form fieldset { margin: 0; padding: 0; border: 0; }
+  .c-recipe-form details { border-top: 1px solid color-mix(in srgb, currentColor 30%, transparent); padding-top: 0.75rem; }
+  .c-recipe-form summary { cursor: pointer; font-weight: 500; }
+  .c-recipe-form details[open] summary { margin-bottom: 0.75rem; }
+  .c-recipe-form__optional { display: grid; gap: 0.9rem; }
+  .c-recipe-form__choices { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
+  .c-recipe-form__choices label { display: inline-flex; gap: 0.35rem; align-items: center; font-weight: 400; margin: 0; }
+  .c-recipe-form__trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .c-recipe-form__send {
+    justify-self: start;
+    padding: 0.55rem 1.2rem;
+    border: 1.5px solid currentColor;
+    border-radius: 2rem;
+    background: currentColor;
+    cursor: pointer;
+    font: inherit;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+  .c-recipe-form__send span { color: var(--page-bg, #000000); }
+  .c-recipe-form__send:disabled { cursor: default; opacity: 0.5; }
+  .c-recipe-form__status { min-height: 1.5em; }
+
+  /* Medium screens: bowl and can side by side, the fish and tables below. */
+  @media (max-width: 1023px) {
+    .c-recipe {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+      grid-template-areas:
+        "bowl   can"
+        "points points"
+        "tables tables"
+        "note   note";
+    }
+    .c-recipe__points { max-width: 40rem; }
+  }
+
+  /* Phones: one column. */
+  @media (max-width: 640px) {
+    .c-recipe {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "bowl" "can" "points" "tables" "note";
+    }
+    .c-recipe__bowl { width: 85%; justify-self: center; }
+    .c-recipe__can { max-width: 13rem; }
+    .c-recipe__point { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr); }
+  }
+</style>

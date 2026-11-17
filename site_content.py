@@ -25,6 +25,9 @@ Edit the text here. Each page is a list of blocks, shown top to bottom:
     Gallery("Illustrations", [Artwork("Title", "2022-12-17", "moments/...webp", place="...", note="...")])
                                  a section of pictures with a caption under each, newest first; an
                                  empty section is left out (plain web version only)
+    RecipeFinder(url, why=..., how=..., how_points=[...], note=...)
+                                 the Recipe Finder layout on Work: bowl, can, swimming fish, add-a-recipe
+                                 form and tables of food (plain web version only)
 
 Each page on divyaduraisamy.org ends with a "Next" link to the page after it, in the order below;
 the last one opens Contact.
@@ -146,6 +149,25 @@ class Project:
 
 
 @dataclass
+class RecipeFinder:
+    """The Recipe Finder section on Work, laid out like the page-layout drawing: the bowl (pull it to
+    open the app), the can with "Try it out", three fish that swim out of the can as you scroll to
+    "why?", "How it works" and "add a recipe", and the tables of food with a note under them."""
+    url: str
+    why: str
+    how: str
+    how_points: list[str] = field(default_factory=list)
+    how_after: str = ""
+    add: str = ""               # the line under "add a recipe"
+    note: str = ""              # under the tables of food
+    # Where "add a recipe" sends answers: your Google Form's formResponse address and the entry IDs
+    # of its questions. Empty = the form shows but says sending opens soon.
+    form_action: str = ""
+    form_entries: dict[str, str] = field(default_factory=dict)
+    only: str | None = "domain"
+
+
+@dataclass
 class Gallery:
     heading: str
     pieces: list[Artwork] = field(default_factory=list)
@@ -190,9 +212,17 @@ PAGES = {
         Title("Work"),
         Text("Projects I've built are aimed to address specific problems surrounding health equity in locations I've worked.", only="domain"),
         Text("I hope to document the work I’ve done to enhance health equity. I want to document my perspective and reveal how it changes over time. Maybe it will lead me to understand why I think the way I do. I want this to serve as a mix between a collection of memories and life work.", only="streamlit"),
-        Project("Recipe Finder", "https://macsc-recipe-finder-1.streamlit.app/",
-                "I built this app as a resource to help food pantry clients make the most of the ingredients they receive. Anyone can use this recipe finder, but I built it to help the Mechanicville Area Community Services Center with food preparation access. The app allows anyone to select the ingredients they received and instantly see recipes that match, sorted by how quickly they can be made. Users can also filter by cooking appliance, difficulty level, dietary needs, and time, so it works whether someone has a full kitchen or just a microwave.",
-                drawing="ui-scrapbook/custom-features/assets/recipe-bowl.webp"),
+        RecipeFinder(
+            "https://macsc-recipe-finder-1.streamlit.app/",
+            why="I built this app as a resource to help food pantry clients make the most of the ingredients they receive.",
+            how="The app allows anyone to select the ingredients they have on hand to instantly see recipes that match, sorted by",
+            how_points=["how quickly they can be made", "type of cooking appliance", "difficulty level", "dietary needs", "time"],
+            how_after="so it goes beyond a typical recipe website to help our clients' specific needs.",
+            add="Share a recipe you love. Only the name, ingredients and steps are needed.",
+            note="Anyone can use this recipe finder, but it was originally inspired to help the Mechanicville Area "
+                 "Community Services Center with food preparation access. A lot of our clients had expressed wanting "
+                 "suggestions, variety, and healthy options. This is meant to be a resource and not a medical guide.",
+        ),
         Waves(),
     ]),
     # Illustrations, photos, stories and cartoons not about KOVU. Header label: Moments.
