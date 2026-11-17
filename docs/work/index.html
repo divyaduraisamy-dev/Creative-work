@@ -800,7 +800,7 @@
     --layout-recipe-gap: clamp(1rem, 3vw, 2.5rem);
 
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.8fr) minmax(0, 1.25fr);
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 0.55fr) minmax(0, 1.7fr);
     grid-template-areas:
       "bowl   can    points"
       "tables tables points"
@@ -826,10 +826,10 @@
   }
   .c-draw--ink-only .c-draw__ink { position: static; display: block; aspect-ratio: var(--ratio); }
 
-  .c-recipe__bowl { grid-area: bowl; align-self: center; }
+  .c-recipe__bowl { grid-area: bowl; align-self: center; width: 100%; max-width: 17rem; justify-self: center; }
   .c-recipe .c-linkdraw { width: 100%; margin: 0; }
 
-  .c-recipe__can { grid-area: can; width: 100%; max-width: 17rem; justify-self: center; }
+  .c-recipe__can { grid-area: can; width: 100%; max-width: 12rem; justify-self: center; }
 
   .c-recipe__points {
     grid-area: points;
@@ -842,8 +842,8 @@
 
   .c-recipe__point {
     display: grid;
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
-    gap: 0 1rem;
+    grid-template-columns: minmax(5rem, 9rem) minmax(0, 1fr);
+    gap: 0 1.25rem;
     align-items: start;
   }
 
@@ -861,7 +861,8 @@
   .c-recipe__say { display: grid; gap: 0.6rem; }
   .c-recipe__bubble { margin: 0; padding: 0; width: min(100%, 11rem); }
   .c-recipe__bubble .c-draw { width: 100%; }
-  .c-recipe__say p, .c-recipe__say ul { margin: 0; line-height: 1.5; }
+  .c-recipe__say { max-width: 36rem; }
+  .c-recipe__say p, .c-recipe__say ul { margin: 0; line-height: 1.6; }
   .c-recipe__say ul { padding-left: 1.2rem; }
 
   /* add a recipe: the bubble and its fish are one button. */
@@ -880,7 +881,7 @@
   .c-recipe__add:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 2rem; }
   .c-recipe__point--add .c-recipe__fish { cursor: pointer; }
 
-  .c-recipe__tables { grid-area: tables; width: 100%; }
+  .c-recipe__tables { grid-area: tables; width: 100%; max-width: 30rem; }
   .c-recipe__note { grid-area: note; max-width: 40rem; line-height: 1.5; }
 
   /* The add-a-recipe form. */
@@ -941,6 +942,9 @@
         "note   note";
     }
     .c-recipe__points { max-width: 40rem; }
+    .c-recipe__bowl { max-width: 22rem; }
+    .c-recipe__can { max-width: 15rem; }
+    .c-recipe__tables { max-width: 40rem; }
   }
 
   /* Phones: one column. */

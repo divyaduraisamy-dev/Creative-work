@@ -2231,7 +2231,8 @@ const CustomLinkPull = {
  * Recipe Finder (recipe-finder.html): as the page scrolls, each fish swims from the painted fish
  * on the can (options.from, shares of the can's box) to its place by its bubble, growing from the
  * painted size (options.fromWidth of the can's width) and tilting nose up and down on the way.
- * Scrolling back sends them back into the can. A fish leaves the can when the can reaches the
+ * They only swim forward: once a fish has come out (or arrived), scrolling back up leaves it
+ * where it is. A fish leaves the can when the can reaches the
  * middle of the screen and arrives when its own place does; if the page can't scroll that far,
  * it arrives at the bottom of the page. Reduced motion: the fish stay where they belong.
  */
@@ -2256,6 +2257,7 @@ const CustomFishSwim = {
     if (!can || !fish.length) return;
     let paths = [];
     let frame = null;
+    const best = fish.map(() => 0);  // furthest each fish has swum (0 = in the can, 1 = arrived)
 
     const measure = () => {
       fish.forEach((f) => { f.style.transform = ""; });
@@ -2286,7 +2288,8 @@ const CustomFishSwim = {
       fish.forEach((f, i) => {
         const p = paths[i];
         if (!p) return;
-        const t = p.end > p.start ? Math.min(1, Math.max(0, (y - p.start) / (p.end - p.start))) : 1;
+        const now = p.end > p.start ? Math.min(1, Math.max(0, (y - p.start) / (p.end - p.start))) : 1;
+        const t = best[i] = Math.max(best[i], now);
         if (t >= 1) { f.style.transform = ""; f.style.opacity = ""; return; }
         const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // ease in and out
         const k = 1 - e;
