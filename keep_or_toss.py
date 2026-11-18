@@ -406,6 +406,10 @@ def home_body(site: Site, prefix: str) -> tuple[str, dict]:
     body = (
         page_open("k-home")
         + f'<header class="k-hero"><h1>{esc(c.APP_NAME)}</h1><p class="k-lead">{esc(T["tagline"])}</p></header>'
+        # The game sits at the top, so it's easy to find without scrolling past every food.
+        + '<ul class="k-links k-links--top">'
+        + f'<li><a href="{prefix}{c.APP_SLUG}/game/"><span class="k-links__title">{esc(T["game_card_title"])}</span>'
+        + f'<span>{esc(T["game_card_text"])}</span></a></li></ul>'
         + f'<section class="k-why" aria-labelledby="k-why"><h2 id="k-why">{esc(T["why_title"])}</h2><p>{esc(T["why"])}</p></section>'
         + '<div class="k-finder" id="k-finder">'
         + f'<form class="k-search" role="search" hidden onsubmit="return false"><label for="k-search-input">{esc(T["search_label"])}</label>'
@@ -417,9 +421,7 @@ def home_body(site: Site, prefix: str) -> tuple[str, dict]:
         + "".join(groups) + "</div>"
         + '<ul class="k-links">'
         + f'<li><a href="{prefix}{c.APP_SLUG}/basics/"><span class="k-links__title">{esc(T["basics_card_title"])}</span>'
-        + f'<span>{esc(T["basics_card_text"])}</span></a></li>'
-        + f'<li><a href="{prefix}{c.APP_SLUG}/game/"><span class="k-links__title">{esc(T["game_card_title"])}</span>'
-        + f'<span>{esc(T["game_card_text"])}</span></a></li></ul>'
+        + f'<span>{esc(T["basics_card_text"])}</span></a></li></ul>'
         + note_markup() + "</div>")
     data = {"text": {k: T[k] for k in ("count_one", "count_many")}}
     return body, data
@@ -618,3 +620,69 @@ def pages(site: Site, report: Report) -> list[AppPage]:
         for r in report.review:
             print(f"    - {r}")
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Export for the MACSC Recipe Finder (Streamlit), which shows the game and the food storage info
+# ---------------------------------------------------------------------------------------------
+EXPORT = ROOT / "keep_or_toss_export"
+
+
+def export() -> Path:
+    """Write keep_or_toss_export/data.json and the drawings it uses. The Recipe Finder copies this
+    folder in with its sync_keep_or_toss.py, so the words are still edited in one place."""
+    T = c.TEXT
+    if EXPORT.exists():
+        shutil.rmtree(EXPORT)
+    (EXPORT / "drawings").mkdir(parents=True)
+
+    def art(name: str) -> dict:
+        found = find_art(name)
+        out = {}
+        for layer in ("color", "ink"):
+            path = getattr(found, layer) if found else None
+            if path:
+                shutil.copyfile(path, EXPORT / "drawings" / path.name)
+                out[layer] = f"drawings/{path.name}"
+        return out
+
+    def src(key: str, products=()) -> dict:
+        s = c.SOURCES[key]
+        detail = "; ".join(fk_name(p) for p in dict.fromkeys(products)) if key == "foodkeeper" and products else ""
+        return {"title": s.title, "publisher": s.publisher, "url": s.url, "detail": detail}
+
+    foods = []
+    for f in c.FOODS:
+        products = [p.time.product for p in f.plans if isinstance(p.time, c.FK)]
+        foods.append({
+            "slug": f.slug, "name": f.name, "category": f.category, "also_called": f.also_called,
+            "intro": f.intro, "alt": f.alt, "art": art(f.slug),
+            "plans": [{"choice": p.choice, "place": p.place, "place_label": T["places"][p.place],
+                       "time": time_text(p.time), "how": [x.text for x in p.how]} for p in f.plans],
+            "use_soon": [x.text for x in f.use_soon], "toss": [x.text for x in f.toss],
+            "mold": ({"action": f.mold.action, "label": T["answers"][f.mold.action], "text": [x.text for x in f.mold.text]}
+                     if f.mold else None),
+            "mold_needed": f.mold_needed,
+            "ideas": [x.text for x in f.ideas], "safety": [x.text for x in f.safety],
+            "sources": [src(k, products) for k in food_sources(f)],
+        })
+    data = {
+        "app_name": c.APP_NAME,
+        "foodkeeper": foodkeeper()[0],
+        "text": {k: T[k] for k in (
+            "places", "answers", "plan_title", "where", "lasts", "how", "signs_title", "use_soon_title",
+            "toss_title", "mold_title", "ideas_title", "safety_title", "sources_title", "nothing_yet",
+            "game_title", "game_intro", "game_start", "game_round", "game_question", "game_right", "game_wrong",
+            "game_answer_is", "game_source", "game_next", "game_finish", "game_score", "game_best",
+            "game_best_new", "game_again", "basics_title", "basics_intro", "note", "note_links_intro")},
+        "categories": c.CATEGORIES,
+        "foods": foods,
+        "basics": [{"title": r.title, "text": [x.text for x in r.text]} for r in c.BASICS],
+        "basics_sources": [src(k) for k in dict.fromkeys(k for r in c.BASICS for x in r.text for k in x.sources)],
+        "rounds": c.GAME_ROUNDS,
+        "scenarios": [{"food": s.food, "situation": s.situation, "answer": s.answer, "reason": s.reason,
+                       "source": src(s.source)} for s in c.SCENARIOS],
+        "note_links": [src(k) for k in c.NOTE_LINKS],
+    }
+    (EXPORT / "data.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return EXPORT

@@ -786,6 +786,8 @@ def main() -> None:
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "index.html").write_text(render_page(app.name, app_page(app), app=app), encoding="utf-8")
     print(f"wrote {len(app_pages)} Keep or Toss pages in {(OUT / kot.c.APP_SLUG).relative_to(ROOT)}/")
+    # The MACSC Recipe Finder shows the game and food info too (it copies this folder in).
+    print(f"wrote {kot.export().relative_to(ROOT)}/ for the Recipe Finder")
     # GitHub Pages: serve the files as they are (no Jekyll processing).
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     # GitHub Pages: the custom domain. Rebuilding clears docs/, so it is written here every time.

@@ -45,3 +45,6 @@ ui-scrapbook/wodniack-dev/*
 app (1).py
 Best KOVU drawing copy.png
 Logo for website - Edited.svg
+
+# Made by build_static.py for the MACSC Recipe Finder (it keeps its own copy)
+keep_or_toss_export/

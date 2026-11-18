@@ -359,3 +359,6 @@
 @media (prefers-reduced-motion: reduce) {
   .k-work__link, .k-work__link:hover, .k-work__link:focus-visible { transition: none; transform: rotate(-2deg); }
 }
+
+/* The game link at the top of the home page: one card, not two columns. */
+.k-links.k-links--top { margin: 0 0 1.5rem; grid-template-columns: 1fr; max-width: 32rem; }
