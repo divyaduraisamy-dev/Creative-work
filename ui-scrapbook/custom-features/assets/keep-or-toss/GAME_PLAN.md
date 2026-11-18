@@ -3,14 +3,16 @@
 A plan for the next Keep, Toss, Refrigerate, or Freeze game. Nothing here is built yet.
 Working name: **Find the Three** (change it in one place, like the app's name).
 
-Choices marked **Proposed** are my suggestions. Change any of them before we build.
+Choices marked **Decided** are yours. Choices marked **Proposed** are my suggestions; change any of
+them before we build.
 
 ---
 
 ## 1. How it plays
 
-1. **Pick a place.** The player taps the **fridge door handle** or the **produce basket**.
-   The fridge swings open onto its shelves. The basket tips out onto the counter.
+1. **Pick a place.** The player taps the **fridge door handle**, the **produce basket**, or the
+   **pantry cupboard**. The fridge swings open onto its shelves, the basket tips out onto the
+   counter, and the cupboard doors open onto shelves of cans, jars and bread.
 2. **Look at the foods.** A small group of foods appears, each in one version: unripe, ripe, very
    ripe, moldy, dented, past a date, left out, and so on. Each food has its clues: the drawing
    itself, plus a small tag when the problem can't be seen (see section 3).
@@ -23,19 +25,26 @@ Choices marked **Proposed** are my suggestions. Change any of them before we bui
      storage options (the plans from that food's page: counter, pantry, fridge or freezer, and how
      long it lasts). *"Brown spots mean it's very ripe, not spoiled. Bake with it, or peel and freeze it."*
 5. **Set done.** When all three are found, a short summary shows the three tosses and any foods
-   tapped by mistake, then **Next set**, which is harder.
-6. **End.** After the last level in that place, the player can try the other place or start over.
+   tapped by mistake.
+6. **Bonus round.** One of the foods that stayed comes back with the question "Where should this go?"
+   and four buttons: Counter, Pantry, Fridge, Freezer (see section 2b). Then **Next set**, which is harder.
+7. **End.** After the last level in that place, the player can try another place or start over.
+
+**Decided:**
+- **No penalty for wrong taps.** No points lost, no lives, no losing. A wrong tap only shows why the
+  food is fine and how to store it.
+- **The quiz moves inside the game.** The current 10 question game becomes a button on the game's
+  start screen: **Test your food storage knowledge**. It works the way it does now.
 
 **Proposed:**
-- No lives and no losing. A wrong tap just costs a point and teaches something.
-- The score is how many sets were cleared without a wrong tap. The best score is saved in the browser
-  only, and the game still works if the browser blocks storage (like the current game).
-- A **Hint** button outlines one of the remaining tosses after two wrong taps.
-- The current 10 question game stays as a "Quick quiz" until this one replaces it.
+- With no penalty there's no score to lose. The game remembers the furthest level reached in each
+  place, in the browser only, and still works if the browser blocks storage.
+- A **Hint** button outlines one of the remaining tosses after two wrong taps. It never costs anything.
 
 ## 2. Levels
 
-Each place (fridge, basket) has three levels. Every set always has exactly 3 tosses; the rest are keeps.
+Each place (fridge, basket, pantry) has three levels. Every set always has exactly 3 tosses; the
+rest are keeps.
 
 | Level | Foods in a set | What makes it harder |
 |---|---|---|
@@ -48,9 +57,28 @@ tosses come from that level. The keeps can come from that level or an easier one
 levels need more of them. The build checks that every place and level has at least 3 tosses
 and enough keeps to fill a set.
 
+"Foods in a set" is how many foods are on the screen at once. More foods means more to look through
+to find the same three. **Proposed:** 6, 8 and 9 (waiting on your OK).
+
 Level 3 matters most for safety. The app's first rule is that the germs that cause food poisoning
 usually don't change how food looks or smells. If every toss in the game were something you can
 see, it would teach the opposite.
+
+## 2b. Bonus round: where does it go?
+
+**Decided:** after each set, one food that stayed (a keep) comes back with the question
+"Where should this go?" and four buttons: **Counter, Pantry, Fridge, Freezer**.
+
+- The right answers come from that food's plans on its page, so there's nothing new to write. Many
+  foods have more than one right answer (bananas: counter or freezer), and every one of them counts.
+- After answering, the card shows each right place with how to store it there and how long it lasts,
+  in the same words as the food page.
+- A wrong answer gets a short reason from the food's facts, like "The fridge takes away a tomato's
+  flavor", and no penalty, like the rest of the game.
+- The bonus round leans on foods where the place matters most: bananas, tomatoes and avocados
+  (counter, then maybe the fridge), potatoes and onions (pantry, not the fridge), raw meat and fish
+  (fridge or freezer), and opened cans (out of the can and into the fridge).
+- Kids mode asks the same question with simpler words.
 
 ## 3. Clues the drawings can't show
 
@@ -67,14 +95,15 @@ screen readers read them too:
 
 ## 4. Kids mode
 
-**Proposed:** a **Kids** button on the same game, not a separate game. Same places and drawings,
+**Decided:** a **Kids** button on the same game, not a separate game. Same places and drawings,
 with these differences:
 
 - Simpler words. Every food version gets a second, shorter reason written for kids.
   *Grown up:* "Shredded cheese can carry mold all through the bag from the tools that cut it."
   *Kids:* "Mold can hide in the whole bag of cheese. Toss it."
-- Bigger pictures, fewer foods (**Proposed:** 5 per set, with 3 to toss), and only Levels 1 and 2. Level 3 (time and temperature) uses one simple rule: "Food that should be cold
-  can't stay out longer than 2 hours."
+- Bigger pictures and fewer foods (**Proposed:** 5 per set, with 3 to toss).
+- Levels 1 and 2 as they are. Level 3 (time and temperature) uses just one rule, said simply:
+  "Food that should be cold can't stay out longer than 2 hours."
 - No score, just stars for each set cleared.
 - A line on every screen: "Ask a grown up before you throw food away." Kids are never told to touch
   raw meat or moldy food, or to smell anything moldy (USDA says not to sniff moldy food).
@@ -83,7 +112,7 @@ with these differences:
 ## 5. How it connects to what's built
 
 - Each **food version** is one new entry in `keep_or_toss_content.py`, next to its food:
-  the version name, drawing name, place (fridge or basket), level, verdict (toss or keep),
+  the version name, drawing name, place (fridge, basket or pantry), level, verdict (toss or keep),
   any tag, the reason, the kids reason, and its source key.
 - A wrong tap shows the food's **existing plans** (where, how, how long), so storage advice stays in
   one place.
@@ -95,16 +124,16 @@ with these differences:
   animation is skipped when the device asks for less motion.
 - Spanish later: all the words stay in the content file, like the rest of the app.
 
-## 6. Decisions for you
+## 6. Decisions
 
-1. Kids mode as a button (proposed) or a separate game?
-2. Wrong taps: a lost point (proposed), lives, or no penalty at all?
-3. Foods per set (proposed 6, 8, 9) and three levels per place?
-4. Keep the current quiz alongside, or replace it?
-5. Cans and bread don't belong in the fridge or the basket. Add a third place later (a **pantry
-   cupboard**), or leave them out of this game?
-6. Should the game ever ask where a food should be stored (the sorting idea)? It could be a bonus
-   round after each set: "Where should the brown spotted banana go?"
+| Question | Answer |
+|---|---|
+| Kids version | **Decided:** a Kids button on the same game |
+| Wrong taps | **Decided:** no penalty |
+| The current quiz | **Decided:** a button inside the game, "Test your food storage knowledge" |
+| Cans and bread | **Decided:** a third place, the pantry cupboard |
+| Where does it go? | **Decided:** a bonus round after each set |
+| Foods on screen per set | **Open:** proposed 6, 8 and 9 for Levels 1, 2 and 3 (Kids: 5) |
 
 ---
 
@@ -124,6 +153,8 @@ The source column is the key in `keep_or_toss_content.py` (SOURCES).
 | `scene-fridge-closed` | The fridge, door shut, with a big handle to tap |
 | `scene-fridge-open` | The open fridge: two or three shelves and a door with shelves |
 | `scene-basket` | A produce basket on a counter |
+| `scene-pantry-closed` | The pantry cupboard, doors shut, with handles to tap |
+| `scene-pantry-open` | The open cupboard: shelves for cans, jars and bread |
 | `scene-counter` | The counter the basket's foods are laid out on |
 | `trash-can` | Where tossed foods go |
 | `tag-clock`, `tag-date`, `tag-note`, `tag-smell`, `tag-thermometer` | The clue tags (section 3) |
@@ -189,25 +220,32 @@ The source column is the key in `keep_or_toss_content.py` (SOURCES).
 | Milk (counter) | `milk-left-out` + clock tag "3 hours" | A carton sitting on the counter | Toss | 3 | fda_storing |
 | Cooked rice (counter) | `cooked-rice-overnight` + clock tag "overnight" | Rice in a rice cooker that's been turned off | Toss | 3 | usu_rice |
 
-### Pantry (only if you add a third place, decision 5)
+### Pantry
 
 | Food | Version (drawing name) | What to draw | Answer | Level | Source |
 |---|---|---|---|---|---|
-| Canned vegetables | `canned-vegetables-small-dent` | A can with a small dent on the side | Keep | 2 | fsis_shelf |
-| Canned vegetables | `canned-vegetables-rust-wipes` | A little surface rust | Keep | 2 | fsis_shelf |
-| Canned vegetables | `canned-vegetables-past-date` + date tag | A good can, past its "Best if Used By" date | Keep | 3 | foodkeeper |
+| Canned vegetables | `canned-vegetables-fine` | A good can | Keep | 1 | foodkeeper |
 | Canned vegetables | `canned-vegetables-bulging` | A swollen can | Toss | 1 | fsis_shelf |
-| Canned vegetables | `canned-vegetables-seam-dent` | A deep dent on the seam | Toss | 2 | fsis_shelf |
 | Canned vegetables | `canned-vegetables-leaking` | A sticky, leaking can | Toss | 1 | fsis_shelf |
-| Bread | `bread-stale` | A dry, stale loaf | Keep | 2 | ucanr_bread |
+| Bread | `bread-fine` | A fresh loaf | Keep | 1 | foodkeeper |
 | Bread | `bread-moldy` | A loaf with fuzzy green dots | Toss | 1 | fsis_mold |
+| Jam | `jam-sealed` | A sealed jar | Keep | 1 | foodkeeper |
+| Tortillas | `tortillas-sealed` | A sealed package of flour tortillas | Keep | 1 | foodkeeper |
+| Canned vegetables | `canned-vegetables-small-dent` | A can with a small dent on the side | Keep | 2 | fsis_shelf |
+| Canned vegetables | `canned-vegetables-rust-wipes` | A little surface rust that rubs off | Keep | 2 | fsis_shelf |
+| Canned vegetables | `canned-vegetables-seam-dent` | A deep dent on the seam | Toss | 2 | fsis_shelf |
+| Canned vegetables | `canned-vegetables-heavy-rust` | A can covered in rust | Toss | 2 | fsis_shelf |
+| Canned vegetables | `canned-vegetables-milky` | An open can with milky liquid around vegetables that should be in clear liquid | Toss | 2 | fsis_shelf |
+| Bread | `bread-stale` | A dry, stale loaf | Keep | 2 | ucanr_bread |
+| Canned vegetables | `canned-vegetables-past-date` + date tag | A good can, past its "Best if Used By" date | Keep | 3 | foodkeeper |
+| Canned vegetables | `canned-vegetables-spurted` + note "spurted when opened" | An open can with splashes around it | Toss | 3 | fsis_shelf |
+| Opened canned food | `opened-canned-food-in-cupboard` + note "opened yesterday" | An open can left on the shelf | Toss | 3 | fsis_shelf |
 | Infant formula | `formula-use-by` + date tag "Use By: yesterday" | A formula container | Toss | 3 | fda_formula |
+| Infant formula | `formula-in-date` + date tag "Use By: next month" | A formula container | Keep | 3 | fda_formula |
 
-That's 30 fridge versions, 21 basket and counter versions, and 9 pantry versions, plus the scenes
+That's 30 fridge versions, 21 basket and counter versions, and 18 pantry versions, plus the scenes
 and tags. Every place has at least 3 tosses at every level. You don't need all of them to start:
 Level 1 alone needs 3 tosses and 3 keeps per place.
-
-The pantry list has only 5 tosses in all, so it would start as one mixed level until there are more versions.
 
 ### Versions left out until there's a source
 
