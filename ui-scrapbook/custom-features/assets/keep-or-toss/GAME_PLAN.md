@@ -58,7 +58,7 @@ levels need more of them. The build checks that every place and level has at lea
 and enough keeps to fill a set.
 
 "Foods in a set" is how many foods are on the screen at once. More foods means more to look through
-to find the same three. **Proposed:** 6, 8 and 9 (waiting on your OK).
+to find the same three. **Decided:** 6, 8 and 9.
 
 Level 3 matters most for safety. The app's first rule is that the germs that cause food poisoning
 usually don't change how food looks or smells. If every toss in the game were something you can
@@ -133,7 +133,7 @@ with these differences:
 | The current quiz | **Decided:** a button inside the game, "Test your food storage knowledge" |
 | Cans and bread | **Decided:** a third place, the pantry cupboard |
 | Where does it go? | **Decided:** a bonus round after each set |
-| Foods on screen per set | **Open:** proposed 6, 8 and 9 for Levels 1, 2 and 3 (Kids: 5) |
+| Foods on screen per set | **Decided:** 6, 8 and 9 for Levels 1, 2 and 3 (Kids: proposed 5) |
 
 ---
 
